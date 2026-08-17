@@ -11,11 +11,14 @@ pub fn run() {
         .manage(k8s::interactive::TerminalManager::default())
         .manage(k8s::interactive::PortForwardManager::default())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::app::app_info,
             commands::clusters::list_clusters,
             commands::clusters::connect_cluster,
             commands::clusters::reload_kubeconfig,
+            commands::clusters::get_kubeconfig_path,
+            commands::clusters::set_kubeconfig_path,
             commands::resources::list_resources,
             commands::resources::get_resource,
             commands::resources::delete_resource,

@@ -14,7 +14,7 @@ import { useNamespaces } from "@/features/clusters/use-clusters";
 import { useUiStore } from "@/lib/stores/ui-store";
 
 export function AppHeader() {
-  const { setTheme, theme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const activeCluster = useActiveCluster();
   const activeNamespace = useClusterStore((s) => s.activeNamespace);
   const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
@@ -23,6 +23,7 @@ export function AppHeader() {
   const namespacesQuery = useNamespaces(activeCluster?.connected ? activeCluster.name : null);
   const namespaces = namespacesQuery.data ?? [];
   const connected = activeCluster?.connected ?? false;
+  const isDark = resolvedTheme === "dark";
 
   return (
     <header className="bg-background/80 sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
@@ -72,9 +73,9 @@ export function AppHeader() {
           variant="ghost"
           size="icon"
           aria-label="Toggle theme"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onClick={() => setTheme(isDark ? "light" : "dark")}
         >
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
       </div>
     </header>

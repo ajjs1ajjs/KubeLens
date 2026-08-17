@@ -31,4 +31,5 @@ uuid = { version = "1", features = ["v4"] }
 prost = { version = "0.13", features = ["derive"] }
 flate2 = "1"
 base64 = "0.22"
+tauri-plugin-dialog = "2"
 

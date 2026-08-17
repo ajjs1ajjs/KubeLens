@@ -14,6 +14,7 @@ use crate::k8s::models::ClusterSummary;
 pub struct ClusterManager {
     config: Arc<Mutex<Option<Kubeconfig>>>,
     clients: Arc<Mutex<HashMap<String, Client>>>,
+    custom_kubeconfig: Arc<Mutex<Option<std::path::PathBuf>>>,
 }
 
 impl Default for ClusterManager {
@@ -21,6 +22,7 @@ impl Default for ClusterManager {
         Self {
             config: Arc::new(Mutex::new(None)),
             clients: Arc::new(Mutex::new(HashMap::new())),
+            custom_kubeconfig: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -33,6 +35,7 @@ impl ClusterManager {
         Self {
             config: Arc::new(Mutex::new(Some(config))),
             clients: Arc::new(Mutex::new(HashMap::new())),
+            custom_kubeconfig: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -46,10 +49,25 @@ impl ClusterManager {
 
     /// Re-reads the kubeconfig from disk and clears cached clients.
     pub fn reload(&self) -> Result<Kubeconfig, String> {
-        let config = crate::kubeconfig::load_kubeconfig()?;
+        let config = self.load_kubeconfig()?;
         *self.config.lock().unwrap() = Some(config.clone());
         self.clients.lock().unwrap().clear();
         Ok(config)
+    }
+
+    /// Sets a custom kubeconfig path (or clears it when `None`) and reloads.
+    pub fn set_kubeconfig_path(&self, path: Option<std::path::PathBuf>) -> Result<Kubeconfig, String> {
+        *self.custom_kubeconfig.lock().unwrap() = path;
+        self.reload()
+    }
+
+    /// Returns the active kubeconfig, using the custom path when one is set.
+    fn load_kubeconfig(&self) -> Result<Kubeconfig, String> {
+        let custom = self.custom_kubeconfig.lock().unwrap().clone();
+        match custom {
+            Some(path) => crate::kubeconfig::load_kubeconfig_from(&path),
+            None => crate::kubeconfig::load_kubeconfig(),
+        }
     }
 
     /// Lists all contexts without connecting to any cluster.

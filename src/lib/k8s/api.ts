@@ -29,6 +29,11 @@ export const k8sApi = {
 
   reloadKubeconfig: () => invoke<ClusterSummary[]>("reload_kubeconfig"),
 
+  getKubeconfigPath: () => invoke<string | null>("get_kubeconfig_path"),
+
+  setKubeconfigPath: (path: string | null) =>
+    invoke<ClusterSummary[]>("set_kubeconfig_path", { path }),
+
   listResources: (ctx: ResourceContext) => invoke<K8sObject[]>("list_resources", { ctx }),
 
   getResource: (ctx: ResourceContext, name: string) =>

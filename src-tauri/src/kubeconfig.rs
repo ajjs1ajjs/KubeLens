@@ -56,6 +56,57 @@ pub fn load_kubeconfig() -> Result<Kubeconfig, String> {
     )
 }
 
+/// Loads a single explicit kubeconfig file (used for a user-chosen path).
+pub fn load_kubeconfig_from(path: &Path) -> Result<Kubeconfig, String> {
+    if !path.exists() {
+        return Err(format!("Kubeconfig file does not exist: {}", path.display()));
+    }
+    Kubeconfig::read_from(path).map_err(|e| format!("Failed to parse {}: {e}", path.display()))
+}
+
+/// Filename used to persist the user-chosen kubeconfig path.
+const SETTINGS_FILE: &str = "settings.json";
+
+/// Reads the persisted custom kubeconfig path, if any.
+pub fn load_custom_kubeconfig_path(config_dir: &Path) -> Option<String> {
+    let path = config_dir.join(SETTINGS_FILE);
+    if !path.exists() {
+        return None;
+    }
+    let content = std::fs::read_to_string(&path).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&content).ok()?;
+    value
+        .get("kubeconfigPath")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+/// Persists (or clears, when `path` is `None`) the custom kubeconfig path.
+pub fn save_custom_kubeconfig_path(config_dir: &Path, path: Option<&str>) {
+    let path_buf = config_dir.join(SETTINGS_FILE);
+    let _ = std::fs::create_dir_all(config_dir);
+    let mut settings = if path_buf.exists() {
+        std::fs::read_to_string(&path_buf)
+            .ok()
+            .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+            .unwrap_or_else(|| serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    match path {
+        Some(p) if !p.is_empty() => {
+            settings["kubeconfigPath"] = serde_json::Value::String(p.to_string());
+        }
+        _ => {
+            settings.as_object_mut().map(|o| o.remove("kubeconfigPath"));
+        }
+    }
+    if let Ok(content) = serde_json::to_string_pretty(&settings) {
+        let _ = std::fs::write(&path_buf, content);
+    }
+}
+
 /// Loads and merges the kubeconfig files described by `env`/`home`.
 ///
 /// Split out for testability; `load_kubeconfig` reads the real environment.
