@@ -59,7 +59,6 @@ export function SettingsPage() {
       const picked = await open({
         multiple: false,
         directory: false,
-        filters: [{ name: "Kubeconfig", extensions: ["yaml", "yml", "config", "json"] }],
       });
       if (typeof picked === "string") {
         const summaries = await k8sApi.setKubeconfigPath(picked);
