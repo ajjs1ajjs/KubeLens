@@ -153,6 +153,19 @@ Requires Docker and kind.
 tests on Windows and macOS, and produces installers (NSIS on Windows, DMG on
 macOS) for every push to `main`.
 
+## Releases
+
+Releases are driven by version tags (`v*`). Pushing a tag builds the NSIS/DMG
+installers and publishes them as a GitHub Release (draft):
+
+```powershell
+.\scripts\bump-version.ps1 1.2.3   # bump + commit + tag v1.2.3
+git push origin main --tags         # triggers the Release workflow
+```
+
+`bump-version.ps1` keeps `Cargo.toml`, `tauri.conf.json` and `package.json` in
+sync and creates the `v<version>` tag.
+
 ## License
 
 Private project. All rights reserved.

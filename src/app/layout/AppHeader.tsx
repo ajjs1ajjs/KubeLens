@@ -25,15 +25,21 @@ export function AppHeader() {
   const connected = activeCluster?.connected ?? false;
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <header className="bg-background/80 sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
       <SidebarTrigger />
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm font-medium">
           {activeCluster?.name ?? "No cluster connected"}
         </span>
-        {connected && activeCluster?.version && (
-          <span className="text-muted-foreground hidden truncate text-xs lg:inline">
-            {activeCluster.version}
+        {connected ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            {activeCluster?.version ?? "connected"}
+          </span>
+        ) : (
+          <span className="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs">
+            <span className="bg-muted-foreground/50 size-1.5 rounded-full" />
+            offline
           </span>
         )}
       </div>
