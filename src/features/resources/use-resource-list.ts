@@ -47,48 +47,84 @@ export function useResourceList(ctx: ResourceContext | null) {
     let disposed = false;
     let unlisten: (() => void) | undefined;
     let watchId: string | undefined;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
+
+    const applyEvent = (event: import("@/lib/k8s/types").WatchEvent) => {
+      if (disposed) return;
+      if (event.action === "error") {
+        setWatchError(event.error ?? "watch failed");
+        scheduleReconnect();
+        return;
+      }
+      setWatchError(null);
+      setWatching(true);
+      const key = resourceQueryKey(c);
+      if (event.action === "upsert" && event.object) {
+        const object = event.object;
+        queryClient.setQueryData<K8sObject[]>(key, (old = []) => {
+          const uid = objectUid(object);
+          const index = old.findIndex((o) => objectUid(o) === uid);
+          if (index === -1) return [...old, object];
+          const next = old.slice();
+          next[index] = object;
+          return next;
+        });
+      } else if (event.action === "delete" && event.object) {
+        const object = event.object;
+        queryClient.setQueryData<K8sObject[]>(key, (old = []) =>
+          old.filter((o) => objectUid(o) !== objectUid(object)),
+        );
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (disposed) return;
+      setWatching(false);
+      setWatchError((current) => current ?? "watch failed");
+      // Exponential backoff with jitter, capped at 30s.
+      const delay = Math.min(30_000, 1_000 * 2 ** attempt) + Math.random() * 500;
+      attempt += 1;
+      retryTimer = setTimeout(() => {
+        if (disposed) return;
+        void (async () => {
+          try {
+            const id = await k8sApi.startWatch(c);
+            if (disposed) {
+              void k8sApi.stopWatch(id);
+              return;
+            }
+            watchId = id;
+            attempt = 0;
+            setWatchError(null);
+            unlisten = await subscribeWatch(id, applyEvent);
+            if (!disposed) setWatching(true);
+          } catch {
+            if (!disposed) scheduleReconnect();
+          }
+        })();
+      }, delay);
+    };
 
     void (async () => {
       try {
-        watchId = await k8sApi.startWatch(c);
+        const id = await k8sApi.startWatch(c);
         if (disposed) {
-          void k8sApi.stopWatch(watchId);
+          void k8sApi.stopWatch(id);
           return;
         }
-        unlisten = await subscribeWatch(watchId, (event) => {
-          if (disposed) return;
-          if (event.action === "error") {
-            setWatchError(event.error ?? "watch failed");
-            return;
-          }
-          setWatchError(null);
-          setWatching(true);
-          const key = resourceQueryKey(c);
-          if (event.action === "upsert" && event.object) {
-            const object = event.object;
-            queryClient.setQueryData<K8sObject[]>(key, (old = []) => {
-              const uid = objectUid(object);
-              const index = old.findIndex((o) => objectUid(o) === uid);
-              if (index === -1) return [...old, object];
-              const next = old.slice();
-              next[index] = object;
-              return next;
-            });
-          } else if (event.action === "delete" && event.object) {
-            const object = event.object;
-            queryClient.setQueryData<K8sObject[]>(key, (old = []) =>
-              old.filter((o) => objectUid(o) !== objectUid(object)),
-            );
-          }
-        });
-        setWatching(true);
+        watchId = id;
+        setWatchError(null);
+        unlisten = await subscribeWatch(id, applyEvent);
+        if (!disposed) setWatching(true);
       } catch {
-        if (!disposed) setWatchError("failed to start watch");
+        if (!disposed) scheduleReconnect();
       }
     })();
 
     return () => {
       disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
       unlisten?.();
       if (watchId) void k8sApi.stopWatch(watchId);
     };

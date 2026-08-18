@@ -1,7 +1,9 @@
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
-use crate::k8s::cluster_manager::ClusterManager;
+use crate::k8s::cluster_manager::{
+    config_entries_from_stored, default_config_name, ClusterManager,
+};
 use crate::k8s::models::{ClusterConfig, ClusterSummary};
 
 /// Lists all contexts from the active kubeconfig without connecting.
@@ -90,11 +92,11 @@ pub fn add_cluster_config(
         return manager.list_configs();
     }
     let id = Uuid::new_v4().to_string();
-    let name = default_name(&path);
+    let name = default_config_name(&path);
     stored.push(serde_json::json!({ "id": id, "name": name, "path": path }));
     let active = crate::kubeconfig::load_active_config_id(&dir);
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
-    manager.set_configs(parse_stored(&stored), active)?;
+    manager.set_configs(config_entries_from_stored(&stored), active)?;
     manager.list_configs()
 }
 
@@ -119,7 +121,7 @@ pub fn rename_cluster_config(
     }
     let active = crate::kubeconfig::load_active_config_id(&dir);
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
-    manager.set_configs(parse_stored(&stored), active)?;
+    manager.set_configs(config_entries_from_stored(&stored), active)?;
     manager.list_configs()
 }
 
@@ -141,7 +143,7 @@ pub fn remove_cluster_config(
         active = None;
     }
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
-    manager.set_configs(parse_stored(&stored), active)?;
+    manager.set_configs(config_entries_from_stored(&stored), active)?;
     manager.list_configs()
 }
 
@@ -160,32 +162,4 @@ pub fn set_active_cluster_config(
     crate::kubeconfig::save_cluster_configs(&dir, &stored, id.as_deref());
     manager.set_active_config(id.clone())?;
     manager.list_configs()
-}
-
-fn parse_stored(
-    stored: &[serde_json::Value],
-) -> Vec<crate::k8s::cluster_manager::ClusterConfigEntry> {
-    stored
-        .iter()
-        .filter_map(|v| {
-            Some(crate::k8s::cluster_manager::ClusterConfigEntry {
-                id: v.get("id")?.as_str()?.to_string(),
-                name: v
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("")
-                    .to_string(),
-                path: v.get("path")?.as_str()?.to_string(),
-            })
-        })
-        .collect()
-}
-
-fn default_name(path: &str) -> String {
-    let pb = std::path::Path::new(path);
-    pb.file_stem()
-        .and_then(|s| s.to_str())
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| "kubeconfig".to_string())
 }

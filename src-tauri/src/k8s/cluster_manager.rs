@@ -228,6 +228,34 @@ pub struct ClusterConfigEntry {
     pub path: String,
 }
 
+/// Converts persisted `[{id,name,path}]` JSON entries into config entries.
+pub fn config_entries_from_stored(stored: &[serde_json::Value]) -> Vec<ClusterConfigEntry> {
+    stored
+        .iter()
+        .filter_map(|v| {
+            Some(ClusterConfigEntry {
+                id: v.get("id")?.as_str()?.to_string(),
+                name: v
+                    .get("name")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                path: v.get("path")?.as_str()?.to_string(),
+            })
+        })
+        .collect()
+}
+
+/// Derives a display name from a kubeconfig file path (its file stem).
+pub fn default_config_name(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "kubeconfig".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

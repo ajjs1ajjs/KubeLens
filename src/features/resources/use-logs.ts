@@ -42,6 +42,7 @@ export function useLogs(
   const [followError, setFollowError] = useState<string | null>(null);
   const unlisten = useRef<(() => void) | null>(null);
   const activeId = useRef<string | null>(null);
+  const cancelledRef = useRef(false);
 
   // Reset accumulated lines when switching to a different pod/container.
   const [lastKey, setLastKey] = useState("");
@@ -63,18 +64,19 @@ export function useLogs(
   }, []);
 
   const stopFollowing = useCallback(() => {
+    cancelledRef.current = true;
     teardown();
     setFollowing(false);
   }, [teardown]);
 
   const startFollowing = useCallback(() => {
     if (!ctx) return;
+    cancelledRef.current = false;
     teardown();
-    let disposed = false;
     void (async () => {
       try {
         const id = await k8sApi.followLogs(ctx, name, container);
-        if (disposed) {
+        if (cancelledRef.current) {
           void k8sApi.stopFollowLogs(id);
           return;
         }
@@ -87,28 +89,32 @@ export function useLogs(
           }
           const line = event.line;
           if (event.action === "line" && line !== undefined) {
-            setLiveLines((lines) => [...lines, line]);
+            setLiveLines((lines) => {
+              lines.push(line);
+              return lines;
+            });
           }
           if (event.action === "done") {
             setFollowing(false);
           }
         });
+        if (cancelledRef.current) {
+          teardown();
+          return;
+        }
         setFollowing(true);
       } catch {
-        if (!disposed) setFollowError("failed to start following logs");
+        if (!cancelledRef.current) setFollowError("failed to start following logs");
       }
     })();
-    return () => {
-      disposed = true;
-    };
   }, [ctx, name, container, teardown]);
 
   useEffect(() => {
-    return stopFollowing;
-  }, [stopFollowing]);
-
-  useEffect(() => {
-    teardown();
+    // Stop any active follow when the pod/container changes or on unmount.
+    cancelledRef.current = true;
+    return () => {
+      teardown();
+    };
   }, [name, container, teardown]);
 
   const refresh = useCallback(() => {

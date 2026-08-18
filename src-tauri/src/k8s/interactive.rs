@@ -392,7 +392,7 @@ impl PortForwardManager {
         let stream = pf
             .take_stream(remote_port)
             .ok_or_else(|| "Port-forward stream was not available".to_string())?;
-        let (mut pod_read, mut pod_write) = tokio::io::split(stream);
+        let mut pod_duplex = stream;
 
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
@@ -408,15 +408,9 @@ impl PortForwardManager {
                 let Ok((mut conn, _)) = listener.accept().await else {
                     break;
                 };
-                let (mut conn_read, mut conn_write) = conn.split();
-                // Proxy one connection at a time; when either direction ends,
-                // close the tunnel end for this connection.
-                let forward = tokio::io::copy(&mut conn_read, &mut pod_write);
-                let backward = tokio::io::copy(&mut pod_read, &mut conn_write);
-                tokio::select! {
-                    _ = forward => {}
-                    _ = backward => {}
-                }
+                // Proxy one connection at a time; `copy_bidirectional` handles
+                // both directions and closes cleanly when either side EOFs.
+                let _ = tokio::io::copy_bidirectional(&mut conn, &mut pod_duplex).await;
             }
         });
         let abort_handle = task.abort_handle();

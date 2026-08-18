@@ -36,7 +36,10 @@ const ctx: ResourceContext = {
 };
 
 let eventHandler:
-  ((event: { payload: { id: string; action: string; object?: K8sObject } }) => void) | undefined;
+  | ((event: {
+      payload: { id: string; action: string; object?: K8sObject; error?: string };
+    }) => void)
+  | undefined;
 let unlisten: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -47,7 +50,9 @@ beforeEach(() => {
   listenMock.mockImplementation(
     (
       _name: string,
-      handler: (e: { payload: { id: string; action: string; object?: K8sObject } }) => void,
+      handler: (e: {
+        payload: { id: string; action: string; object?: K8sObject; error?: string };
+      }) => void,
     ) => {
       eventHandler = handler;
       return Promise.resolve(unlisten);
@@ -135,5 +140,31 @@ describe("useResourceList", () => {
 
     const { result } = renderHook(() => useResourceList(ctx), { wrapper });
     await waitFor(() => expect(result.current.watch).toBe("error"));
+  });
+
+  it("reconnects after a watch error event", async () => {
+    let startCalls = 0;
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "list_resources") return Promise.resolve([]);
+      if (cmd === "start_watch") {
+        startCalls += 1;
+        return Promise.resolve(`watch-${startCalls}`);
+      }
+      if (cmd === "stop_watch") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${cmd}`));
+    });
+
+    const { result } = renderHook(() => useResourceList(ctx), { wrapper });
+    await waitFor(() => expect(result.current.watch).toBe("watching"));
+
+    // Simulate the backend ending the watch with an error.
+    act(() => {
+      eventHandler?.({ payload: { id: "watch-1", action: "error", error: "stream ended" } });
+    });
+    await waitFor(() => expect(result.current.watch).toBe("error"));
+
+    // It should reconnect after the backoff delay and go back to watching.
+    await waitFor(() => expect(result.current.watch).toBe("watching"), { timeout: 5000 });
+    expect(startCalls).toBeGreaterThanOrEqual(2);
   });
 });

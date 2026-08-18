@@ -24,20 +24,7 @@ pub fn run() {
                 .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
             let stored = kubeconfig::load_cluster_configs(&dir);
             let active = kubeconfig::load_active_config_id(&dir);
-            let entries = stored
-                .iter()
-                .filter_map(|v| {
-                    Some(k8s::cluster_manager::ClusterConfigEntry {
-                        id: v.get("id")?.as_str()?.to_string(),
-                        name: v
-                            .get("name")
-                            .and_then(|n| n.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        path: v.get("path")?.as_str()?.to_string(),
-                    })
-                })
-                .collect::<Vec<_>>();
+            let entries = k8s::cluster_manager::config_entries_from_stored(&stored);
             let _ = manager.set_configs(entries, active);
             Ok(())
         })
