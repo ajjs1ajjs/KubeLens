@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import { useClusterStore } from "@/features/clusters/cluster-store";
 
 export type UpdateStatus =
   "idle" | "checking" | "available" | "downloading" | "up-to-date" | "error";
@@ -15,16 +14,15 @@ export interface UseUpdateResult {
 }
 
 /**
- * Checks for app updates via the Tauri updater plugin. Only runs when a
- * cluster is connected (the app is actively used) so the extra network
- * request doesn't fire on every cold start.
+ * Checks for app updates via the Tauri updater plugin. Runs once on mount
+ * (app startup) regardless of cluster state, so users always learn about a
+ * new version as soon as the app opens.
  */
 export function useUpdate(): UseUpdateResult {
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [version, setVersion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const updateRef = useRef<Update | null>(null);
-  const connecting = useClusterStore((s) => s.clusters.some((c) => c.connected));
   const checkedOnce = useRef(false);
 
   const checkForUpdates = useCallback(async () => {
@@ -47,10 +45,10 @@ export function useUpdate(): UseUpdateResult {
   }, [status]);
 
   useEffect(() => {
-    if (checkedOnce.current || !connecting) return;
+    if (checkedOnce.current) return;
     checkedOnce.current = true;
     void checkForUpdates();
-  }, [connecting, checkForUpdates]);
+  }, [checkForUpdates]);
 
   const installUpdate = useCallback(async () => {
     const update = updateRef.current;

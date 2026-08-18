@@ -55,12 +55,12 @@ describe("useUpdate", () => {
     await waitFor(() => expect(result.current.status).toBe("up-to-date"));
   });
 
-  it("does not check when no cluster is connected", async () => {
-    withConnectedCluster(false);
+  it("checks for updates even when no cluster is connected", async () => {
+    mockCheck.mockResolvedValue(null);
 
-    renderHook(() => useUpdate());
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(mockCheck).not.toHaveBeenCalled();
+    const { result } = renderHook(() => useUpdate());
+    await waitFor(() => expect(result.current.status).toBe("up-to-date"));
+    expect(mockCheck).toHaveBeenCalledTimes(1);
   });
 
   it("installs the update and resets status", async () => {
