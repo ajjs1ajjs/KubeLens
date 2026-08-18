@@ -26,33 +26,77 @@ export function MetricBar({ label, value, capacity, format }: MetricBarProps) {
   );
 }
 
-/** Stacked CPU/RAM usage bars for a pod's containers. */
-export function ContainerUsageChart({
-  containers,
-  cpuCapacity,
-  memoryCapacity,
+export interface ResourceCapability {
+  /** Actual usage. */
+  value: number;
+  /** Optional requests figure (millicores or bytes). */
+  request?: number;
+  /** Optional limits figure (millicores or bytes). */
+  limit?: number;
+}
+
+/** A usage bar with request and limit markers overlaid. */
+function UsageWithMarkers({
+  label,
+  metric,
+  format,
 }: {
-  containers: { name: string; cpuMillicores: number; memoryBytes: number }[];
-  cpuCapacity?: number;
-  memoryCapacity?: number;
+  label: string;
+  metric: ResourceCapability;
+  format: (value: number) => string;
 }) {
+  const scale = metric.limit ?? metric.request;
+  const percentOf = (v: number | undefined) =>
+    scale && scale > 0 ? Math.min(100, (v ?? 0) / scale) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground w-24 shrink-0 text-xs">{label}</span>
+      <div className="relative h-2 min-w-0 flex-1">
+        {/* track */}
+        <div className="bg-muted absolute inset-0 rounded-full" />
+        {/* usage fill */}
+        <div
+          className="bg-primary absolute inset-y-0 left-0 rounded-full"
+          style={{ width: `${percentOf(metric.value)}%` }}
+        />
+        {/* request marker */}
+        {metric.request !== undefined && (
+          <div
+            className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-amber-500"
+            style={{ left: `${percentOf(metric.request)}%` }}
+            title={`request ${format(metric.request)}`}
+          />
+        )}
+        {/* limit marker */}
+        {metric.limit !== undefined && (
+          <div
+            className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-red-500"
+            style={{ left: `${percentOf(metric.limit)}%` }}
+            title={`limit ${format(metric.limit)}`}
+          />
+        )}
+      </div>
+      <span className="w-24 shrink-0 text-right text-xs tabular-nums">{format(metric.value)}</span>
+    </div>
+  );
+}
+
+export interface ResourceUsageRow {
+  name: string;
+  cpu: ResourceCapability;
+  memory: ResourceCapability;
+}
+
+/** Usage bars with request/limit markers for a pod's containers. */
+export function ContainerUsageChart({ containers }: { containers: ResourceUsageRow[] }) {
   return (
     <div className="flex flex-col gap-2">
       {containers.map((container) => (
         <div key={container.name} className="flex flex-col gap-1">
           <span className="text-muted-foreground text-xs">{container.name}</span>
-          <MetricBar
-            label="CPU"
-            value={container.cpuMillicores}
-            capacity={cpuCapacity}
-            format={formatCpu}
-          />
-          <MetricBar
-            label="Memory"
-            value={container.memoryBytes}
-            capacity={memoryCapacity}
-            format={formatMemory}
-          />
+          <UsageWithMarkers label="CPU" metric={container.cpu} format={formatCpu} />
+          <UsageWithMarkers label="Memory" metric={container.memory} format={formatMemory} />
         </div>
       ))}
     </div>

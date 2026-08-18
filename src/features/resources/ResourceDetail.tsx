@@ -117,7 +117,7 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
             </TabsContent>
             {isPod && resourceCtx && (
               <TabsContent value="metrics" className="min-h-0 flex-1 overflow-auto">
-                <PodMetricsTab ctx={resourceCtx} name={m.name} />
+                <PodMetricsTab ctx={resourceCtx} name={m.name} pod={object} />
               </TabsContent>
             )}
             {isPod && resourceCtx && (
