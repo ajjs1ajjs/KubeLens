@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import i18n from "@/i18n";
 import { k8sApi } from "@/lib/k8s/api";
 import type { ResourceContext } from "@/lib/k8s/types";
 import { resourceQueryKey } from "./use-resource-list";
@@ -22,7 +23,7 @@ export function useResourceActions(ctx: ResourceContext | null) {
       return k8sApi.deleteResource(ctx, name);
     },
     onSuccess: () => {
-      toast.success("Resource deleted");
+      toast.success(i18n.t("resources.toasts.resourceDeleted"));
       invalidate();
     },
     onError: (error: unknown) => toast.error(String(error)),
@@ -34,7 +35,7 @@ export function useResourceActions(ctx: ResourceContext | null) {
       return k8sApi.applyYaml(ctx, yaml);
     },
     onSuccess: () => {
-      toast.success("Manifest applied");
+      toast.success(i18n.t("resources.toasts.manifestApplied"));
       invalidate();
     },
     onError: (error: unknown) => toast.error(String(error)),

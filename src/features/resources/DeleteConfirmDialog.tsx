@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,22 +27,20 @@ export function DeleteConfirmDialog({
   isDeleting,
   onConfirm,
 }: DeleteConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete {kind}</DialogTitle>
-          <DialogDescription>
-            This will permanently delete <span className="font-medium">{name}</span> from the
-            cluster. This action cannot be undone.
-          </DialogDescription>
+          <DialogTitle>{t("resources.delete.title", { kind })}</DialogTitle>
+          <DialogDescription>{t("resources.delete.description", { name })}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-            {isDeleting ? "Deleting…" : "Delete"}
+            {isDeleting ? "Deleting…" : t("resources.delete.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

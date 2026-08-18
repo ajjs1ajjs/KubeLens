@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useNamespaces } from "@/features/clusters/use-clusters";
 import { useUiStore } from "@/lib/stores/ui-store";
 
 export function AppHeader() {
+  const { t } = useTranslation();
   const { setTheme, resolvedTheme } = useTheme();
   const activeCluster = useActiveCluster();
   const activeNamespace = useClusterStore((s) => s.activeNamespace);
@@ -30,17 +32,17 @@ export function AppHeader() {
       <SidebarTrigger />
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate text-sm font-medium">
-          {activeCluster?.name ?? "No cluster connected"}
+          {activeCluster?.name ?? t("header.noCluster")}
         </span>
         {connected ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
             <span className="size-1.5 rounded-full bg-emerald-500" />
-            {activeCluster?.version ?? "connected"}
+            {activeCluster?.version ?? t("header.connected")}
           </span>
         ) : (
           <span className="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs">
             <span className="bg-muted-foreground/50 size-1.5 rounded-full" />
-            offline
+            {t("header.offline")}
           </span>
         )}
       </div>
@@ -48,10 +50,10 @@ export function AppHeader() {
       <div className="ml-auto flex items-center gap-2">
         <Select disabled={!connected} value={activeNamespace} onValueChange={setActiveNamespace}>
           <SelectTrigger className="w-44" aria-label="Namespace">
-            <SelectValue placeholder="All namespaces" />
+            <SelectValue placeholder={t("header.allNamespaces")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All namespaces</SelectItem>
+            <SelectItem value="">{t("header.allNamespaces")}</SelectItem>
             {namespaces.map((namespace) => (
               <SelectItem key={namespace} value={namespace}>
                 {namespace}
@@ -63,7 +65,7 @@ export function AppHeader() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Search commands"
+          aria-label={t("header.search")}
           onClick={() => setCommandPaletteOpen(true)}
         >
           <Search className="size-4" />
@@ -72,7 +74,7 @@ export function AppHeader() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Toggle theme"
+          aria-label={t("header.toggleTheme")}
           onClick={() => setTheme(isDark ? "light" : "dark")}
         >
           {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}

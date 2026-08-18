@@ -1,5 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
+import { useMemo } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Badge } from "@/components/ui/badge";
 import {
   formatAge,
@@ -139,30 +142,43 @@ function MemCell({ obj, lookup }: { obj: K8sObject; lookup: MetricsLookup }) {
   return <span className="tabular-nums">{formatMemory(value)}</span>;
 }
 
-function metricColumns(lookup: MetricsLookup): ResourceColumn[] {
+function metricColumns(lookup: MetricsLookup, t: TFunction): ResourceColumn[] {
   return [
-    { id: "cpu", header: "CPU", cell: (o) => <CpuCell obj={o} lookup={lookup} /> },
-    { id: "memory", header: "Memory", cell: (o) => <MemCell obj={o} lookup={lookup} /> },
+    {
+      id: "cpu",
+      header: t("resources.columns.cpu"),
+      cell: (o) => <CpuCell obj={o} lookup={lookup} />,
+    },
+    {
+      id: "memory",
+      header: t("resources.columns.memory"),
+      cell: (o) => <MemCell obj={o} lookup={lookup} />,
+    },
   ];
 }
 
 /** Column configs for a resource kind. */
-export function resourceColumns(kind: string, metrics?: MetricsLookup): ResourceColumn[] {
+export function resourceColumns(
+  kind: string,
+  metrics?: MetricsLookup,
+  t?: TFunction,
+): ResourceColumn[] {
+  const tr = (t ?? ((key: string) => key)) as TFunction;
   const name: ResourceColumn = {
     id: "name",
-    header: "Name",
+    header: tr("resources.columns.name"),
     accessorKey: "metadata.name",
     cell: (o) => <Name obj={o} />,
   };
   const namespace: ResourceColumn = {
     id: "namespace",
-    header: "Namespace",
+    header: tr("resources.columns.namespace"),
     accessorKey: "metadata.namespace",
     cell: (o) => <span className="text-muted-foreground">{meta(o).namespace ?? "—"}</span>,
   };
   const age: ResourceColumn = {
     id: "age",
-    header: "Age",
+    header: tr("resources.columns.age"),
     accessorKey: "metadata.creationTimestamp",
     cell: (o) => <Age obj={o} />,
   };
@@ -172,9 +188,9 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
       return [
         name,
         namespace,
-        { id: "ready", header: "Ready", cell: (o) => <PodReady obj={o} /> },
-        { id: "status", header: "Status", cell: (o) => <Phase obj={o} /> },
-        ...(metrics ? metricColumns(metrics) : []),
+        { id: "ready", header: tr("resources.columns.ready"), cell: (o) => <PodReady obj={o} /> },
+        { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
+        ...(metrics ? metricColumns(metrics, tr) : []),
         age,
       ];
     case "Deployment":
@@ -184,14 +200,18 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
       return [
         name,
         namespace,
-        { id: "ready", header: "Ready", cell: (o) => <Replicas obj={o} /> },
+        { id: "ready", header: tr("resources.columns.ready"), cell: (o) => <Replicas obj={o} /> },
         age,
       ];
     case "Job":
       return [
         name,
         namespace,
-        { id: "completions", header: "Completions", cell: (o) => <Replicas obj={o} /> },
+        {
+          id: "completions",
+          header: tr("resources.columns.completions"),
+          cell: (o) => <Replicas obj={o} />,
+        },
         age,
       ];
     case "Service":
@@ -200,13 +220,13 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
         namespace,
         {
           id: "type",
-          header: "Type",
+          header: tr("resources.columns.type"),
           accessorKey: "spec.type",
           cell: (o) => <span>{String(readPath(o, "/spec/type") ?? "—")}</span>,
         },
         {
           id: "cluster-ip",
-          header: "Cluster IP",
+          header: tr("resources.columns.clusterIp"),
           accessorKey: "spec.clusterIP",
           cell: (o) => (
             <span className="text-muted-foreground">
@@ -219,18 +239,22 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
     case "Node":
       return [
         name,
-        { id: "status", header: "Status", cell: (o) => <NodeStatus obj={o} /> },
+        {
+          id: "status",
+          header: tr("resources.columns.status"),
+          cell: (o) => <NodeStatus obj={o} />,
+        },
         {
           id: "roles",
-          header: "Roles",
+          header: tr("resources.columns.roles"),
           cell: (o) => (
             <span className="text-muted-foreground">{nodeRoles(o).join(", ") || "—"}</span>
           ),
         },
-        ...(metrics ? metricColumns(metrics) : []),
+        ...(metrics ? metricColumns(metrics, tr) : []),
         {
           id: "version",
-          header: "Version",
+          header: tr("resources.columns.version"),
           cell: (o) => (
             <span className="text-muted-foreground">
               {String(readPath(o, "/status/nodeInfo/kubeletVersion") ?? "—")}
@@ -240,7 +264,11 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
         age,
       ];
     case "Namespace":
-      return [name, { id: "status", header: "Status", cell: (o) => <Phase obj={o} /> }, age];
+      return [
+        name,
+        { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
+        age,
+      ];
     case "ConfigMap":
     case "Secret":
       return [
@@ -248,7 +276,7 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
         namespace,
         {
           id: "data",
-          header: "Data",
+          header: tr("resources.columns.data"),
           cell: (o) => <DataCount obj={o} path={kind === "Secret" ? "/data" : "/data"} />,
         },
         age,
@@ -258,10 +286,10 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
       return [
         name,
         namespace,
-        { id: "status", header: "Status", cell: (o) => <Phase obj={o} /> },
+        { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
         {
           id: "capacity",
-          header: "Capacity",
+          header: tr("resources.columns.capacity"),
           accessorKey: "spec.capacity.storage",
           cell: (o) => (
             <span className="text-muted-foreground">
@@ -277,7 +305,7 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
         namespace,
         {
           id: "class",
-          header: "Class",
+          header: tr("resources.columns.class"),
           accessorKey: "spec.ingressClassName",
           cell: (o) => (
             <span className="text-muted-foreground">
@@ -287,7 +315,7 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
         },
         {
           id: "address",
-          header: "Address",
+          header: tr("resources.columns.address"),
           cell: (o) => (
             <span className="text-muted-foreground">
               {String(readPath(o, "/status/loadBalancer/ingress/0/ip") ?? "—")}
@@ -300,10 +328,20 @@ export function resourceColumns(kind: string, metrics?: MetricsLookup): Resource
       return [
         name,
         ...(needsNamespace(kind) ? [namespace] : []),
-        { id: "status", header: "Status", cell: (o) => <GenericStatus obj={o} /> },
+        {
+          id: "status",
+          header: tr("resources.columns.status"),
+          cell: (o) => <GenericStatus obj={o} />,
+        },
         age,
       ];
   }
+}
+
+/** Columns for a resource kind, translated via the active locale. */
+export function useResourceColumns(kind: string, metrics?: MetricsLookup): ResourceColumn[] {
+  const { t } = useTranslation();
+  return useMemo(() => resourceColumns(kind, metrics, t), [kind, metrics, t]);
 }
 
 function needsNamespace(kind: string): boolean {

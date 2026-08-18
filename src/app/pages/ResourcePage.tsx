@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import { Activity, Plus, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +23,7 @@ import { meta as objectMeta } from "@/lib/k8s/object";
 import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
 
 export function ResourcePage() {
+  const { t } = useTranslation();
   const { kind } = useParams<{ kind: string }>();
   const meta = kind ? findResourceType(kind) : undefined;
 
@@ -84,7 +86,7 @@ export function ResourcePage() {
       <div className="flex flex-1 items-center justify-center p-12">
         <div className="text-muted-foreground flex flex-col items-center gap-3 text-center text-sm">
           <Server className="size-8 opacity-50" />
-          <p>No cluster selected. Connect a cluster from the sidebar to browse resources.</p>
+          <p>{t("resources.page.noCluster")}</p>
         </div>
       </div>
     );
@@ -98,11 +100,11 @@ export function ResourcePage() {
           <h1 className="text-lg font-semibold">{meta?.label ?? kind}</h1>
           <p className="text-muted-foreground flex items-center gap-2 text-xs">
             {meta
-              ? `${resourceApiVersion(meta)} · ${meta.namespaced ? (activeNamespace ? activeNamespace : "all namespaces") : "cluster-scoped"}`
+              ? `${resourceApiVersion(meta)} · ${meta.namespaced ? (activeNamespace ? activeNamespace : t("common.allNamespaces")) : t("common.clusterScoped")}`
               : "Unknown resource type"}
             {watch === "watching" && (
               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                <Activity className="size-3" /> live
+                <Activity className="size-3" /> {t("common.live")}
               </span>
             )}
           </p>
@@ -111,7 +113,7 @@ export function ResourcePage() {
           <span className="text-sm font-medium tabular-nums">{objects.length}</span>
           <Button size="sm" onClick={() => setCreateOpen(true)} disabled={!ctx}>
             <Plus className="size-4" />
-            Create
+            {t("resources.page.create")}
           </Button>
         </div>
       </div>
@@ -125,10 +127,10 @@ export function ResourcePage() {
           </div>
         ) : isError ? (
           <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 rounded-md border border-dashed p-12 text-sm">
-            <p>Failed to load {kind}</p>
+            <p>{t("resources.page.failedToLoad", { kind })}</p>
             <p className="max-w-md truncate text-xs">{String(error)}</p>
             <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-              Reload
+              {t("common.reload")}
             </Button>
           </div>
         ) : (
@@ -154,8 +156,10 @@ export function ResourcePage() {
       <ManifestDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        title={`Create ${meta?.label ?? kind}`}
-        description={`Apply a new ${meta?.label?.toLowerCase() ?? kind} manifest.`}
+        title={t("resources.page.createTitle", { label: meta?.label ?? kind })}
+        description={t("resources.page.createDescription", {
+          label: meta?.label?.toLowerCase() ?? kind,
+        })}
         initialValue={createTemplate}
         submitLabel="Apply"
         isSubmitting={apply.isPending}
@@ -165,8 +169,10 @@ export function ResourcePage() {
       <ManifestDialog
         open={editObject !== null}
         onOpenChange={(open) => !open && setEditObject(null)}
-        title={`Edit ${editObject ? objectMeta(editObject).name : ""}`}
-        description="Apply changes to update this resource in the cluster."
+        title={t("resources.page.editTitle", {
+          name: editObject ? objectMeta(editObject).name : "",
+        })}
+        description={t("resources.page.editDescription")}
         initialValue={editValue}
         submitLabel="Save"
         isSubmitting={apply.isPending}

@@ -1,4 +1,5 @@
 import { NavLink } from "react-router";
+import { useTranslation } from "react-i18next";
 import {
   Activity,
   CheckCircle2,
@@ -19,40 +20,41 @@ import { useClusterStore } from "@/features/clusters/cluster-store";
 import { k8sApi } from "@/lib/k8s/api";
 import { useQueryClient } from "@tanstack/react-query";
 
-const FEATURES: { title: string; description: string; icon: LucideIcon }[] = [
+const FEATURES: { titleKey: string; descKey: string; icon: LucideIcon }[] = [
   {
-    title: "Resource browser",
-    description: "Pods, Deployments, Services and more with live updates.",
+    titleKey: "overview.features.browser.title",
+    descKey: "overview.features.browser.description",
     icon: Container,
   },
   {
-    title: "Logs, exec & port-forward",
-    description: "Stream logs, open a terminal and forward ports to localhost.",
+    titleKey: "overview.features.logs.title",
+    descKey: "overview.features.logs.description",
     icon: Activity,
   },
   {
-    title: "YAML editor",
-    description: "View, edit and apply manifests with validation.",
+    titleKey: "overview.features.yaml.title",
+    descKey: "overview.features.yaml.description",
     icon: FileCode2,
   },
   {
-    title: "Metrics",
-    description: "CPU and memory usage for nodes and pods in real time.",
+    titleKey: "overview.features.metrics.title",
+    descKey: "overview.features.metrics.description",
     icon: Cpu,
   },
   {
-    title: "Helm",
-    description: "Browse and manage Helm releases.",
+    titleKey: "overview.features.helm.title",
+    descKey: "overview.features.helm.description",
     icon: GitBranch,
   },
   {
-    title: "Topology",
-    description: "Visual dependency graph between your workloads.",
+    titleKey: "overview.features.topology.title",
+    descKey: "overview.features.topology.description",
     icon: Network,
   },
 ];
 
 export function OverviewPage() {
+  const { t } = useTranslation();
   const clusters = useClusterStore((s) => s.clusters);
   const queryClient = useQueryClient();
 
@@ -72,29 +74,29 @@ export function OverviewPage() {
           <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-sky-500/20 blur-3xl" />
           <div className="relative flex flex-col items-start gap-2">
             <Badge variant="secondary" className="mb-1">
-              Kubernetes IDE
+              {t("overview.badge")}
             </Badge>
-            <h1 className="text-3xl font-semibold tracking-tight">Welcome to KubeLens</h1>
-            <p className="text-muted-foreground max-w-xl text-sm">
-              A modern, lightweight Kubernetes IDE. Connect a cluster to explore your workloads,
-              metrics, Helm releases and dependency topology — all in one place.
-            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">{t("overview.title")}</h1>
+            <p className="text-muted-foreground max-w-xl text-sm">{t("overview.subtitle")}</p>
           </div>
         </div>
 
         {/* Clusters */}
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium">Clusters</h2>
+            <h2 className="text-sm font-medium">{t("overview.clusters")}</h2>
             <div className="flex items-center gap-2">
               {clusters.length > 0 && (
                 <span className="text-muted-foreground text-xs">
-                  {connected} of {clusters.length} connected
+                  {t("overview.connectedOf", {
+                    connected,
+                    total: clusters.length,
+                  })}
                 </span>
               )}
               <Button variant="outline" size="sm" onClick={reload}>
                 <RefreshCw className="size-3.5" />
-                Reload kubeconfig
+                {t("common.reload")}
               </Button>
             </div>
           </div>
@@ -102,8 +104,8 @@ export function OverviewPage() {
             <Card>
               <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-10 text-center text-sm">
                 <Server className="size-8 opacity-50" />
-                <p>No clusters found in kubeconfig.</p>
-                <p className="text-xs">Point KUBECONFIG at a valid file, then press reload.</p>
+                <p>{t("overview.noClustersFound")}</p>
+                <p className="text-xs">{t("overview.noClustersHint")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -125,7 +127,7 @@ export function OverviewPage() {
                       )}
                     </CardTitle>
                     <CardDescription className="truncate">
-                      {cluster.server || "no server"}
+                      {cluster.server || t("overview.noServer")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-muted-foreground flex items-center gap-2 text-xs">
@@ -133,7 +135,7 @@ export function OverviewPage() {
                       <>
                         <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                           <span className="size-1.5 rounded-full bg-emerald-500" />
-                          Connected
+                          {t("overview.connected")}
                         </span>
                         {cluster.version && <span>· {cluster.version}</span>}
                       </>
@@ -142,7 +144,7 @@ export function OverviewPage() {
                         {cluster.error}
                       </span>
                     ) : (
-                      <span>Connecting…</span>
+                      <span>{t("overview.connecting")}</span>
                     )}
                   </CardContent>
                 </Card>
@@ -153,7 +155,7 @@ export function OverviewPage() {
 
         {/* Resources quick links */}
         <section>
-          <h2 className="mb-3 text-sm font-medium">Resources</h2>
+          <h2 className="mb-3 text-sm font-medium">{t("overview.resources")}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {["Pod", "Deployment", "Service", "ConfigMap", "Ingress", "Node"].map((kind) => (
               <NavLink
@@ -170,13 +172,13 @@ export function OverviewPage() {
         {/* Features */}
         <div className="grid w-full max-w-3xl grid-cols-1 gap-4 self-center sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
-            <Card key={feature.title} className="transition-shadow hover:shadow-md">
+            <Card key={feature.titleKey} className="transition-shadow hover:shadow-md">
               <CardHeader>
                 <span className="bg-primary/10 text-primary inline-flex size-9 items-center justify-center rounded-lg">
                   <feature.icon className="size-5" />
                 </span>
-                <CardTitle className="text-base">{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
+                <CardTitle className="text-base">{t(feature.titleKey)}</CardTitle>
+                <CardDescription>{t(feature.descKey)}</CardDescription>
               </CardHeader>
               <CardContent />
             </Card>

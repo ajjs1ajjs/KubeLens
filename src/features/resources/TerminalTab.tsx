@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, RotateCcw, TerminalSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ interface TerminalTabProps {
 
 /** Exec terminal for a pod with a container picker and reconnect control. */
 export function TerminalTab({ ctx, name, containers }: TerminalTabProps) {
+  const { t } = useTranslation();
   const [container, setContainer] = useState(containers[0] ?? "");
   const [nonce, setNonce] = useState(0);
   const session = useTerminal(ctx, name, container || undefined, ["/bin/sh"], nonce);
@@ -30,7 +32,7 @@ export function TerminalTab({ ctx, name, containers }: TerminalTabProps) {
         {containers.length > 1 && (
           <Select value={container} onValueChange={setContainer}>
             <SelectTrigger size="sm" className="w-44">
-              <SelectValue placeholder="Container" />
+              <SelectValue placeholder={t("resources.terminal.container")} />
             </SelectTrigger>
             <SelectContent>
               {containers.map((name) => (
@@ -48,7 +50,7 @@ export function TerminalTab({ ctx, name, containers }: TerminalTabProps) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Restart terminal session"
+            aria-label={t("resources.terminal.restart")}
             onClick={() => setNonce((n) => n + 1)}
             disabled={session?.status === "connecting"}
           >
@@ -64,13 +66,13 @@ export function TerminalTab({ ctx, name, containers }: TerminalTabProps) {
           ) : (
             <div className="text-muted-foreground absolute inset-0 flex items-center justify-center gap-2 text-xs">
               <Loader2 className="size-3.5 animate-spin" />
-              Connecting…
+              {t("resources.terminal.connecting")}
             </div>
           )
         ) : (
           <div className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs">
             <TerminalSquare className="size-5 opacity-50" />
-            Terminal not started.
+            {t("resources.terminal.notStarted")}
           </div>
         )}
       </div>

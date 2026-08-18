@@ -29,6 +29,6 @@ describe("OverviewPage", () => {
 
   it("shows a reload kubeconfig action", () => {
     renderPage();
-    expect(screen.getByRole("button", { name: /reload kubeconfig/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reload/i })).toBeInTheDocument();
   });
 });

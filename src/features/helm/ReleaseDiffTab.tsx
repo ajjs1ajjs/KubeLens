@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowDownToLine, ArrowUpFromLine, Loader2 } from "lucide-react";
 import {
   Select,
@@ -48,6 +49,7 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
 
 /** Compares two revisions of a release (values + manifest). */
 export function ReleaseDiffTab({ context, name }: ReleaseDiffTabProps) {
+  const { t } = useTranslation();
   const { data: revisions } = useHelmRevisions(context, name);
   const [base, setBase] = useState<number | null>(null);
   const [next, setNext] = useState<number | null>(null);
@@ -66,13 +68,13 @@ export function ReleaseDiffTab({ context, name }: ReleaseDiffTabProps) {
           value={base === null ? "" : String(base)}
           onValueChange={(value) => setBase(Number(value))}
         >
-          <SelectTrigger size="sm" className="w-32" aria-label="Base revision">
-            <SelectValue placeholder="Base rev" />
+          <SelectTrigger size="sm" className="w-32" aria-label={t("helm.diffTab.baseRev")}>
+            <SelectValue placeholder={t("helm.diffTab.baseRev")} />
           </SelectTrigger>
           <SelectContent>
             {versions.map((v) => (
               <SelectItem key={v} value={String(v)}>
-                rev {v}
+                {t("helm.rev")} {v}
               </SelectItem>
             ))}
           </SelectContent>
@@ -82,13 +84,13 @@ export function ReleaseDiffTab({ context, name }: ReleaseDiffTabProps) {
           value={next === null ? "" : String(next)}
           onValueChange={(value) => setNext(Number(value))}
         >
-          <SelectTrigger size="sm" className="w-32" aria-label="Target revision">
-            <SelectValue placeholder="Target rev" />
+          <SelectTrigger size="sm" className="w-32" aria-label={t("helm.diffTab.targetRev")}>
+            <SelectValue placeholder={t("helm.diffTab.targetRev")} />
           </SelectTrigger>
           <SelectContent>
             {versions.map((v) => (
               <SelectItem key={v} value={String(v)}>
-                rev {v}
+                {t("helm.rev")} {v}
               </SelectItem>
             ))}
           </SelectContent>
@@ -97,22 +99,22 @@ export function ReleaseDiffTab({ context, name }: ReleaseDiffTabProps) {
       </div>
 
       {!canDiff ? (
-        <p className="text-muted-foreground text-xs">Choose two different revisions to compare.</p>
+        <p className="text-muted-foreground text-xs">{t("helm.diffTab.choose")}</p>
       ) : loading ? (
         <div className="text-muted-foreground flex items-center gap-2 text-xs">
           <Loader2 className="size-3.5 animate-spin" />
-          Loading revisions…
+          {t("helm.diffTab.loading")}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto">
           <div>
-            <p className="text-muted-foreground mb-1 text-xs">Values</p>
+            <p className="text-muted-foreground mb-1 text-xs">{t("helm.values")}</p>
             <DiffView
               lines={diffLines(baseDetail.data?.values ?? "", nextDetail.data?.values ?? "")}
             />
           </div>
           <div>
-            <p className="text-muted-foreground mb-1 text-xs">Manifest</p>
+            <p className="text-muted-foreground mb-1 text-xs">{t("helm.manifest")}</p>
             <DiffView
               lines={diffLines(baseDetail.data?.manifest ?? "", nextDetail.data?.manifest ?? "")}
             />

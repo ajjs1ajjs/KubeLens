@@ -1,9 +1,11 @@
 import { Download, RefreshCw, Rocket } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useUpdate } from "./use-update";
 
 /** Shows a banner when a new app version is available. */
 export function UpdateBanner() {
+  const { t } = useTranslation();
   const { status, version, error, checkForUpdates, installUpdate, dismiss } = useUpdate();
 
   if (
@@ -23,33 +25,33 @@ export function UpdateBanner() {
         {status === "checking" && (
           <>
             <RefreshCw className="size-4 animate-spin" />
-            <span className="text-muted-foreground">Checking for updates…</span>
+            <span className="text-muted-foreground">{t("updates.checking")}</span>
           </>
         )}
         {status === "available" && version && (
           <>
             <Rocket className="text-primary size-4" />
-            <span className="font-medium">KubeLens {version} is available</span>
+            <span className="font-medium">{t("updates.available", { version })}</span>
             <Button size="sm" onClick={() => void installUpdate()}>
               <Download className="size-3.5" />
-              Update now
+              {t("common.updateNow")}
             </Button>
             <Button variant="ghost" size="sm" onClick={dismiss}>
-              Later
+              {t("common.later")}
             </Button>
           </>
         )}
         {downloading && (
           <>
             <RefreshCw className="size-4 animate-spin" />
-            <span>Downloading update…</span>
+            <span>{t("updates.downloading")}</span>
           </>
         )}
         {status === "error" && (
           <>
             <span className="text-destructive text-xs">{error}</span>
             <Button variant="outline" size="sm" onClick={() => void checkForUpdates()}>
-              Retry
+              {t("common.retry")}
             </Button>
           </>
         )}

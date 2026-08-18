@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router";
 import { open } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   ChevronRight,
@@ -64,6 +65,7 @@ function ConfigRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(config.name);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   const refreshConfigs = async () => {
     await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
@@ -91,7 +93,7 @@ function ConfigRow({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={expanded ? "Collapse config" : "Expand config"}
+          aria-label={expanded ? t("sidebar.collapse") : t("sidebar.expand")}
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
@@ -126,7 +128,7 @@ function ConfigRow({
             variant="ghost"
             size="icon-sm"
             className="text-muted-foreground size-5"
-            aria-label={`Rename ${config.name}`}
+            aria-label={t("sidebar.rename", { name: config.name })}
             onClick={() => {
               setName(config.name);
               setEditing(true);
@@ -140,7 +142,7 @@ function ConfigRow({
             variant="ghost"
             size="icon-sm"
             className="text-destructive size-5"
-            aria-label={`Remove ${config.name}`}
+            aria-label={t("sidebar.remove", { name: config.name })}
             onClick={() => void remove()}
           >
             <Trash2 className="size-3" />
@@ -166,6 +168,7 @@ function ConfigRow({
 }
 
 export function AppSidebar() {
+  const { t } = useTranslation();
   const configs = useClusterStore((s) => s.configs);
   const activeClusterId = useClusterStore((s) => s.activeClusterId);
   const queryClient = useQueryClient();
@@ -195,10 +198,12 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <NavLink to="/">
-                <img src="/app-icon.png" alt="KubeLens" className="size-8 rounded-lg" />
+                <img src="/app-icon.png" alt={t("sidebar.brand")} className="size-8 rounded-lg" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">KubeLens</span>
-                  <span className="text-muted-foreground truncate text-xs">Kubernetes IDE</span>
+                  <span className="truncate font-semibold">{t("sidebar.brand")}</span>
+                  <span className="text-muted-foreground truncate text-xs">
+                    {t("sidebar.brandSub")}
+                  </span>
                 </div>
               </NavLink>
             </SidebarMenuButton>
@@ -209,13 +214,13 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between">
-            <span>Clusters</span>
+            <span>{t("sidebar.clusters")}</span>
             <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="icon-sm"
                 className="text-muted-foreground size-5"
-                aria-label="Add cluster config"
+                aria-label={t("sidebar.addConfig")}
                 onClick={() => void addConfig()}
               >
                 <Plus className="size-3" />
@@ -224,7 +229,7 @@ export function AppSidebar() {
                 variant="ghost"
                 size="icon-sm"
                 className="text-muted-foreground size-5"
-                aria-label="Reload kubeconfig"
+                aria-label={t("sidebar.reloadConfig")}
                 onClick={reloadClusters}
               >
                 <RefreshCw className="size-3" />
@@ -238,7 +243,7 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton disabled className="text-muted-foreground">
                       <Server className="size-4" />
-                      <span>No configs</span>
+                      <span>{t("sidebar.noConfigs")}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
@@ -277,14 +282,14 @@ export function AppSidebar() {
         ))}
 
         <SidebarGroup>
-          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("sidebar.tools")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink to="/helm">
                     <GitBranch className="size-4" />
-                    <span>Helm Releases</span>
+                    <span>{t("sidebar.helm")}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -292,7 +297,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <NavLink to="/topology">
                     <Network className="size-4" />
-                    <span>Topology</span>
+                    <span>{t("sidebar.topology")}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -307,7 +312,7 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <NavLink to="/settings">
                 <Settings className="size-4" />
-                <span>Settings</span>
+                <span>{t("sidebar.settings")}</span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>

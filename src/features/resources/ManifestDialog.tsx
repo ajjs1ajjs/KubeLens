@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,9 +33,13 @@ export function ManifestDialog({
   isSubmitting,
   onSubmit,
 }: ManifestDialogProps) {
+  const { t } = useTranslation();
   // The dialog unmounts while closed, so state always starts from the
   // current initialValue on open.
   const [value, setValue] = useState(initialValue);
+
+  const submitKey =
+    submitLabel === "Apply" ? "common.apply" : submitLabel === "Save" ? "common.save" : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,10 +51,10 @@ export function ManifestDialog({
         <YamlEditor value={value} onChange={setValue} />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={() => onSubmit(value)} disabled={isSubmitting}>
-            {submitLabel}
+            {submitKey ? t(submitKey) : submitLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

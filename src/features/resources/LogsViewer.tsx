@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, Pause, Play, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ interface LogsViewerProps {
 
 /** Tail/follow logs for a pod with a container picker. */
 export function LogsViewer({ ctx, name, containers }: LogsViewerProps) {
+  const { t } = useTranslation();
   const [container, setContainer] = useState(containers[0] ?? "");
   const logs = useLogs(ctx, name, container || undefined);
 
@@ -31,7 +33,7 @@ export function LogsViewer({ ctx, name, containers }: LogsViewerProps) {
         {containers.length > 1 && (
           <Select value={container} onValueChange={setContainer}>
             <SelectTrigger size="sm" className="w-44">
-              <SelectValue placeholder="Container" />
+              <SelectValue placeholder={t("resources.logs.container")} />
             </SelectTrigger>
             <SelectContent>
               {containers.map((name) => (
@@ -44,14 +46,19 @@ export function LogsViewer({ ctx, name, containers }: LogsViewerProps) {
         )}
         {logs.followError && <span className="text-destructive text-xs">{logs.followError}</span>}
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" aria-label="Refresh logs" onClick={logs.refresh}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("resources.logs.refresh")}
+            onClick={logs.refresh}
+          >
             <RefreshCw className="size-3.5" />
           </Button>
           {logs.following ? (
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Stop following logs"
+              aria-label={t("resources.logs.stopFollowing")}
               onClick={logs.stopFollowing}
             >
               <Pause className="size-3.5" />
@@ -60,7 +67,7 @@ export function LogsViewer({ ctx, name, containers }: LogsViewerProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Follow logs"
+              aria-label={t("resources.logs.follow")}
               onClick={logs.startFollowing}
             >
               <Play className="size-3.5" />
@@ -73,14 +80,14 @@ export function LogsViewer({ ctx, name, containers }: LogsViewerProps) {
         {logs.isPending ? (
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <Loader2 className="size-3.5 animate-spin" />
-            Loading logs…
+            {t("resources.logs.loading")}
           </div>
         ) : logs.error ? (
           <p className="text-destructive text-xs">{logs.error}</p>
         ) : text ? (
           <pre className="font-mono text-xs whitespace-pre-wrap">{text}</pre>
         ) : (
-          <p className="text-muted-foreground text-xs">No logs available.</p>
+          <p className="text-muted-foreground text-xs">{t("resources.logs.noLogs")}</p>
         )}
       </div>
     </div>

@@ -1,23 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeAll } from "vitest";
+import "./jsdom-shims";
+import i18n from "@/i18n";
 
-// jsdom lacks matchMedia, which next-themes requires.
+// Ensure translations resolve synchronously in tests (default init is async).
 beforeAll(() => {
-  if (!window.matchMedia) {
-    Object.defineProperty(window, "matchMedia", {
-      writable: true,
-      value: (query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: () => {},
-        removeListener: () => {},
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        dispatchEvent: () => false,
-      }),
-    });
+  if (!i18n.isInitialized) {
+    i18n.init({ initAsync: false, lng: "en" });
   }
 });
 

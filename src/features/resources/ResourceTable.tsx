@@ -10,7 +10,7 @@ import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Pencil, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { resourceColumns, type MetricsLookup } from "./columns";
+import { useResourceColumns, type MetricsLookup } from "./columns";
 import { meta } from "@/lib/k8s/object";
 import type { K8sObject } from "@/lib/k8s/types";
 
@@ -37,12 +37,11 @@ export function ResourceTable({
 }: ResourceTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [query, setQuery] = useState("");
+  const config = useResourceColumns(kind, metrics);
 
   const columns = useMemo<ColumnDef<K8sObject>[]>(() => {
-    const config = resourceColumns(kind, metrics).filter(
-      (c) => c.id !== "namespace" || showNamespace,
-    );
-    const cols: ColumnDef<K8sObject>[] = config.map((c) => ({
+    const visible = config.filter((c) => c.id !== "namespace" || showNamespace);
+    const cols: ColumnDef<K8sObject>[] = visible.map((c) => ({
       id: c.id,
       header: c.header,
       accessorKey: c.accessorKey,
@@ -91,7 +90,7 @@ export function ResourceTable({
     }
 
     return cols;
-  }, [kind, showNamespace, metrics, onEdit, onDelete]);
+  }, [config, showNamespace, onEdit, onDelete]);
 
   const table = useReactTable({
     data: objects,

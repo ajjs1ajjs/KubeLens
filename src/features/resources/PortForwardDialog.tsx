@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ interface PortForwardDialogProps {
 
 /** Start/stop port-forward tunnels to a pod. */
 export function PortForwardDialog({ open, onOpenChange, ctx, name }: PortForwardDialogProps) {
+  const { t } = useTranslation();
   const [remotePort, setRemotePort] = useState("8080");
   const { forwards, isPending, start, stop } = usePortForwards(ctx);
 
@@ -37,14 +39,14 @@ export function PortForwardDialog({ open, onOpenChange, ctx, name }: PortForward
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Port Forward</DialogTitle>
-          <DialogDescription>Expose {name} on a local port.</DialogDescription>
+          <DialogTitle>{t("resources.portForward.title")}</DialogTitle>
+          <DialogDescription>{t("resources.portForward.description", { name })}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-[1fr_auto] items-end gap-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="remote-port">Remote port</Label>
+              <Label htmlFor="remote-port">{t("resources.portForward.remotePort")}</Label>
               <Input
                 id="remote-port"
                 value={remotePort}
@@ -54,13 +56,15 @@ export function PortForwardDialog({ open, onOpenChange, ctx, name }: PortForward
             </div>
             <Button onClick={handleStart} disabled={start.isPending}>
               <Link2 className="size-4" />
-              Forward
+              {t("resources.portForward.forward")}
             </Button>
           </div>
 
           <div className="flex flex-col gap-2">
             {podForwards.length === 0 && !isPending && (
-              <p className="text-muted-foreground text-xs">No active tunnels for this pod.</p>
+              <p className="text-muted-foreground text-xs">
+                {t("resources.portForward.noTunnels")}
+              </p>
             )}
             {podForwards.map((forward) => (
               <div
@@ -77,7 +81,7 @@ export function PortForwardDialog({ open, onOpenChange, ctx, name }: PortForward
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Stop port forward"
+                  aria-label={t("resources.portForward.stop")}
                   onClick={() => stop.mutate(forward.id)}
                   disabled={stop.isPending}
                 >

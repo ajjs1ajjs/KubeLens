@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDetailProps) {
+  const { t } = useTranslation();
   const [portForwardOpen, setPortForwardOpen] = useState(false);
   const raw = useMemo(() => (object ? JSON.stringify(object, null, 2) : ""), [object]);
 
@@ -59,7 +61,7 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
             {m.name}
           </SheetTitle>
           <SheetDescription>
-            {m.namespace ? `${m.namespace} · ` : "cluster-scoped · "}
+            {m.namespace ? `${m.namespace} · ` : `${t("common.clusterScoped")} · `}
             created {formatAge(m.creationTimestamp)}
           </SheetDescription>
         </SheetHeader>
@@ -72,43 +74,47 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
               </Badge>
             ))}
             {Object.keys(m.labels).length === 0 && (
-              <span className="text-muted-foreground text-xs">No labels</span>
+              <span className="text-muted-foreground text-xs">
+                {t("resources.detail.noLabels")}
+              </span>
             )}
           </div>
 
           <div className="flex flex-col gap-1.5 rounded-md border p-3">
-            <Field label="Phase">{typeof phase === "string" ? phase : "—"}</Field>
+            <Field label={t("resources.detail.phase")}>
+              {typeof phase === "string" ? phase : "—"}
+            </Field>
             {replicas && <Field label="Ready">{replicas}</Field>}
             {pod.ready && <Field label="Ready">{pod.ready}</Field>}
             {typeof pod.restarts === "number" && pod.restarts > 0 && (
-              <Field label="Restarts">{pod.restarts}</Field>
+              <Field label={t("resources.detail.restarts")}>{pod.restarts}</Field>
             )}
-            {image && <Field label="Image">{image}</Field>}
+            {image && <Field label={t("resources.detail.image")}>{image}</Field>}
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
             {isPod && resourceCtx && (
               <Button size="sm" variant="outline" onClick={() => setPortForwardOpen(true)}>
-                Port Forward
+                {t("resources.detail.portForward")}
               </Button>
             )}
             <span className="text-muted-foreground ml-auto text-xs">
               {containers.length > 1
-                ? `${containers.length} containers`
+                ? t("resources.detail.containers", { count: containers.length })
                 : containers.length === 1
-                  ? "1 container"
+                  ? t("resources.detail.oneContainer")
                   : ""}
             </span>
           </div>
 
           <Tabs defaultValue="raw" className="flex min-h-0 flex-1 flex-col">
             <TabsList className="w-fit">
-              <TabsTrigger value="raw">Raw JSON</TabsTrigger>
+              <TabsTrigger value="raw">{t("resources.detail.rawJson")}</TabsTrigger>
               {isPod && resourceCtx && (
                 <>
-                  <TabsTrigger value="metrics">Metrics</TabsTrigger>
-                  <TabsTrigger value="logs">Logs</TabsTrigger>
-                  <TabsTrigger value="terminal">Terminal</TabsTrigger>
+                  <TabsTrigger value="metrics">{t("resources.detail.metrics")}</TabsTrigger>
+                  <TabsTrigger value="logs">{t("resources.detail.logs")}</TabsTrigger>
+                  <TabsTrigger value="terminal">{t("resources.detail.terminal")}</TabsTrigger>
                 </>
               )}
             </TabsList>

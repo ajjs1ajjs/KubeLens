@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { GitBranch, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ function ReleaseDetailSheet({
   release: HelmReleaseSummary;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { data, isPending, isError, error } = useHelmRelease(context, release.name);
 
   return (
@@ -51,39 +53,45 @@ function ReleaseDetailSheet({
       <SheetContent className="w-full sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle>
-            <span className="text-muted-foreground mr-2 text-xs font-normal">Release</span>
+            <span className="text-muted-foreground mr-2 text-xs font-normal">
+              {t("helm.release")}
+            </span>
             {release.name}
           </SheetTitle>
           <SheetDescription>
-            {release.namespace} · rev {release.version} · chart {release.chart}-
-            {release.chartVersion}
+            {release.namespace} · {t("helm.rev")} {release.version} · {t("helm.chart")}{" "}
+            {release.chart}-{release.chartVersion}
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
           <div className="flex flex-wrap items-center gap-2">
             <ReleaseStatus status={release.status} />
-            {release.appVersion && <Badge variant="secondary">app v{release.appVersion}</Badge>}
+            {release.appVersion && (
+              <Badge variant="secondary">
+                {t("helm.appVersion", { version: release.appVersion })}
+              </Badge>
+            )}
           </div>
 
           {isPending ? (
             <div className="text-muted-foreground flex items-center gap-2 text-xs">
               <Loader2 className="size-3.5 animate-spin" />
-              Loading release…
+              {t("helm.loading")}
             </div>
           ) : isError ? (
             <p className="text-destructive text-xs">{String(error)}</p>
           ) : (
             <Tabs defaultValue="values" className="flex min-h-0 flex-1 flex-col">
               <TabsList className="w-fit">
-                <TabsTrigger value="values">Values</TabsTrigger>
-                <TabsTrigger value="manifest">Manifest</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
-                <TabsTrigger value="diff">Diff</TabsTrigger>
+                <TabsTrigger value="values">{t("helm.values")}</TabsTrigger>
+                <TabsTrigger value="manifest">{t("helm.manifest")}</TabsTrigger>
+                <TabsTrigger value="notes">{t("helm.notes")}</TabsTrigger>
+                <TabsTrigger value="diff">{t("helm.diff")}</TabsTrigger>
               </TabsList>
               <TabsContent value="values" className="min-h-0 flex-1 overflow-auto">
                 <pre className="bg-muted/50 rounded-md p-3 text-xs">
-                  {data?.values || "No values set."}
+                  {data?.values || t("helm.noValues")}
                 </pre>
               </TabsContent>
               <TabsContent value="manifest" className="min-h-0 flex-1 overflow-auto">
@@ -104,6 +112,7 @@ function ReleaseDetailSheet({
 }
 
 export function HelmPage() {
+  const { t } = useTranslation();
   const activeCluster = useActiveCluster();
   const context = activeCluster?.name ?? null;
   const { data, isPending, isError, error } = useHelmReleases(context);
@@ -118,7 +127,7 @@ export function HelmPage() {
       <div className="flex flex-1 items-center justify-center p-12">
         <div className="text-muted-foreground flex flex-col items-center gap-3 text-center text-sm">
           <GitBranch className="size-8 opacity-50" />
-          <p>No cluster selected. Connect a cluster to browse Helm releases.</p>
+          <p>{t("helm.noCluster")}</p>
         </div>
       </div>
     );
@@ -129,8 +138,10 @@ export function HelmPage() {
       <div className="flex shrink-0 items-center gap-3">
         <GitBranch className="text-primary size-5" />
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold">Helm Releases</h1>
-          <p className="text-muted-foreground text-xs">Installed charts on {activeCluster.name}</p>
+          <h1 className="text-lg font-semibold">{t("helm.title")}</h1>
+          <p className="text-muted-foreground text-xs">
+            {t("helm.installedCharts", { name: activeCluster.name })}
+          </p>
         </div>
         <span className="text-muted-foreground ml-auto text-sm font-medium tabular-nums">
           {releases.length}
@@ -145,34 +156,34 @@ export function HelmPage() {
           </div>
         ) : isError ? (
           <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 rounded-md border border-dashed p-12 text-sm">
-            <p>Failed to load Helm releases</p>
+            <p>{t("helm.failedToLoad")}</p>
             <p className="max-w-md truncate text-xs">{String(error)}</p>
           </div>
         ) : releases.length === 0 ? (
           <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed p-12 text-sm">
-            No Helm releases found.
+            {t("helm.noReleases")}
           </div>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b">
                 <th className="bg-muted/50 text-muted-foreground sticky top-0 z-10 h-9 px-3 text-left font-medium">
-                  Name
+                  {t("helm.columns.name")}
                 </th>
                 <th className="bg-muted/50 text-muted-foreground sticky top-0 z-10 h-9 px-3 text-left font-medium">
-                  Namespace
+                  {t("helm.columns.namespace")}
                 </th>
                 <th className="bg-muted/50 text-muted-foreground sticky top-0 z-10 h-9 px-3 text-left font-medium">
-                  Status
+                  {t("helm.columns.status")}
                 </th>
                 <th className="bg-muted/50 text-muted-foreground sticky top-0 z-10 h-9 px-3 text-left font-medium">
-                  Chart
+                  {t("helm.columns.chart")}
                 </th>
                 <th className="bg-muted/50 text-muted-foreground sticky top-0 z-10 h-9 px-3 text-left font-medium">
-                  Rev
+                  {t("helm.columns.rev")}
                 </th>
                 <th className="bg-muted/50 text-muted-foreground sticky top-0 z-10 h-9 px-3 text-left font-medium">
-                  Age
+                  {t("helm.columns.age")}
                 </th>
                 <th className="bg-muted/50 sticky top-0 z-10 h-9 px-3 text-right font-medium" />
               </tr>
@@ -231,7 +242,7 @@ export function HelmPage() {
       <DeleteConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        kind="Helm release"
+        kind={t("helm.deleteKind")}
         name={deleteTarget ? deleteTarget.name : ""}
         isDeleting={uninstall.isPending}
         onConfirm={() => {

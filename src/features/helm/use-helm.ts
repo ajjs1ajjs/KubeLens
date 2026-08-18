@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import i18n from "@/i18n";
 import { k8sApi } from "@/lib/k8s/api";
 import type { HelmReleaseDetail, HelmReleaseSummary } from "@/lib/k8s/types";
 
@@ -69,7 +70,7 @@ export function useUninstallHelmRelease(context: string | null) {
       return k8sApi.uninstallHelmRelease(context, name);
     },
     onSuccess: (_data, name) => {
-      toast.success(`Release "${name}" uninstalled`);
+      toast.success(i18n.t("resources.toasts.releaseUninstalled", { name }));
       void queryClient.invalidateQueries({ queryKey: helmReleasesQueryKey(context) });
     },
     onError: (error: unknown) => toast.error(String(error)),

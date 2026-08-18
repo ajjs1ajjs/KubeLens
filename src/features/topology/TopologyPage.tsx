@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Network, RefreshCw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,6 +76,7 @@ function GraphEdge({ from, to, nodes }: { from: string; to: string; nodes: Topol
 }
 
 export function TopologyPage() {
+  const { t } = useTranslation();
   const activeCluster = useActiveCluster();
   const activeNamespace = useClusterStore((s) => s.activeNamespace);
   const [selected, setSelected] = useState<TopologyNode | null>(null);
@@ -119,7 +121,7 @@ export function TopologyPage() {
       <div className="flex flex-1 items-center justify-center p-12">
         <div className="text-muted-foreground flex flex-col items-center gap-3 text-center text-sm">
           <Network className="size-8 opacity-50" />
-          <p>No cluster selected. Connect a cluster to see the dependency graph.</p>
+          <p>{t("topology.noCluster")}</p>
         </div>
       </div>
     );
@@ -133,17 +135,20 @@ export function TopologyPage() {
       <div className="flex shrink-0 items-center gap-3">
         <Network className="text-primary size-5" />
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold">Topology</h1>
+          <h1 className="text-lg font-semibold">{t("topology.title")}</h1>
           <p className="text-muted-foreground text-xs">
-            Dependencies in {activeNamespace || "all namespaces"} · {graph.nodes.length} nodes,{" "}
-            {graph.edges.length} edges
+            {t("topology.summary", {
+              namespace: activeNamespace || t("topology.allNamespaces"),
+              nodes: graph.nodes.length,
+              edges: graph.edges.length,
+            })}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Zoom out"
+            aria-label={t("topology.zoomOut")}
             onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}
           >
             <ZoomOut className="size-3.5" />
@@ -154,7 +159,7 @@ export function TopologyPage() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Zoom in"
+            aria-label={t("topology.zoomIn")}
             onClick={() => setZoom((z) => Math.min(2, z + 0.2))}
           >
             <ZoomIn className="size-3.5" />
@@ -162,7 +167,7 @@ export function TopologyPage() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Refresh topology"
+            aria-label={t("topology.refresh")}
             onClick={() => void refetch()}
             disabled={isFetching}
           >
@@ -175,19 +180,19 @@ export function TopologyPage() {
         {isPending ? (
           <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2 text-xs">
             <Skeleton className="size-4 rounded-full" />
-            Loading graph…
+            {t("topology.loading")}
           </div>
         ) : isError ? (
           <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 rounded-md border border-dashed p-12 text-sm">
-            <p>Failed to load topology</p>
+            <p>{t("topology.failedToLoad")}</p>
             <p className="max-w-md truncate text-xs">{String(error)}</p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Retry
+              {t("common.retry")}
             </Button>
           </div>
         ) : graph.nodes.length === 0 ? (
           <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed p-12 text-sm">
-            Nothing to graph yet.
+            {t("topology.nothingToGraph")}
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-6">
