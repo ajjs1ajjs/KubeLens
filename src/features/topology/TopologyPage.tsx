@@ -5,7 +5,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveCluster, useClusterStore } from "@/features/clusters/cluster-store";
 import { useTopology } from "./use-topology";
 import { NODE_HEIGHT, NODE_WIDTH, nodeKindColor, type TopologyNode } from "./topology";
-import type { ResourceContext } from "@/lib/k8s/types";
+import { ResourceDetail } from "@/features/resources/ResourceDetail";
+import { findResourceType } from "@/features/resources/resource-types";
+import { meta } from "@/lib/k8s/object";
+import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
 
 function NodeLabel({ node }: { node: TopologyNode }) {
   return (
@@ -89,7 +92,27 @@ export function TopologyPage() {
     };
   }, [activeCluster, activeNamespace]);
 
-  const { graph, isPending, isError, error, refetch, isFetching } = useTopology(ctx);
+  const { graph, data, isPending, isError, error, refetch, isFetching } = useTopology(ctx);
+
+  const selectedObject = useMemo<K8sObject | null>(() => {
+    if (!selected) return null;
+    return (
+      data?.find((o) => o.kind === selected.resourceKind && meta(o).name === selected.name) ?? null
+    );
+  }, [selected, data]);
+
+  const selectedCtx = useMemo<ResourceContext | null>(() => {
+    if (!selected || !activeCluster) return null;
+    const type = findResourceType(selected.resourceKind);
+    return {
+      context: activeCluster.name,
+      group: type?.group ?? "",
+      version: type?.version ?? "v1",
+      kind: selected.resourceKind,
+      namespaced: type?.namespaced ?? true,
+      namespace: selected.namespace || activeNamespace,
+    };
+  }, [selected, activeCluster, activeNamespace]);
 
   if (!activeCluster) {
     return (
@@ -199,23 +222,13 @@ export function TopologyPage() {
         )}
       </div>
 
-      {selected && (
-        <div className="bg-card mt-2 flex shrink-0 items-center justify-between rounded-md border px-3 py-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span
-              className="size-2.5 rounded-full"
-              style={{ backgroundColor: nodeKindColor(selected.kind) }}
-            />
-            <span className="font-medium">{selected.name}</span>
-            <span className="text-muted-foreground text-xs">
-              {selected.resourceKind}
-              {selected.namespace ? ` · ${selected.namespace}` : ""}
-            </span>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
-            Close
-          </Button>
-        </div>
+      {selected && selectedObject && selectedCtx && (
+        <ResourceDetail
+          kind={selected.resourceKind}
+          object={selectedObject}
+          ctx={selectedCtx}
+          onOpenChange={(open) => !open && setSelected(null)}
+        />
       )}
     </div>
   );
