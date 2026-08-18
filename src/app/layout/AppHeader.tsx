@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Moon, Search, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { useActiveCluster, useClusterStore } from "@/features/clusters/cluster-store";
 import { useNamespaces } from "@/features/clusters/use-clusters";
-import { useUiStore } from "@/lib/stores/ui-store";
 
 export function AppHeader() {
   const { t } = useTranslation();
@@ -20,7 +19,6 @@ export function AppHeader() {
   const activeCluster = useActiveCluster();
   const activeNamespace = useClusterStore((s) => s.activeNamespace);
   const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
-  const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen);
 
   const namespacesQuery = useNamespaces(activeCluster?.connected ? activeCluster.name : null);
   const namespaces = namespacesQuery.data ?? [];
@@ -61,15 +59,6 @@ export function AppHeader() {
             ))}
           </SelectContent>
         </Select>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t("header.search")}
-          onClick={() => setCommandPaletteOpen(true)}
-        >
-          <Search className="size-4" />
-        </Button>
 
         <Button
           variant="ghost"

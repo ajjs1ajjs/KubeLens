@@ -214,7 +214,6 @@
     "connected": "підключено",
     "offline": "офлайн",
     "allNamespaces": "Усі простори",
-    "search": "Пошук команд",
-    "toggleTheme": "Змінити тему"
+        "toggleTheme": "Змінити тему"
   }
 }

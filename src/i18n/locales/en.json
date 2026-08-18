@@ -214,7 +214,6 @@
     "connected": "connected",
     "offline": "offline",
     "allNamespaces": "All namespaces",
-    "search": "Search commands",
-    "toggleTheme": "Toggle theme"
+        "toggleTheme": "Toggle theme"
   }
 }

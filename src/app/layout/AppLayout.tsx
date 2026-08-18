@@ -2,7 +2,6 @@ import { Outlet } from "react-router";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
-import { CommandPalette } from "@/components/command-palette";
 import { UpdateBanner } from "@/features/updates/UpdateBanner";
 import {
   useActiveClusterConnect,
@@ -27,7 +26,6 @@ export function AppLayout() {
           <Outlet />
         </main>
       </SidebarInset>
-      <CommandPalette />
     </SidebarProvider>
   );
 }
