@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   releaseStatusTone,
   useHelmRelease,
+  useHelmReleaseRevision,
   useHelmReleases,
+  useHelmRevisions,
   useUninstallHelmRelease,
 } from "./use-helm";
 import type { HelmReleaseDetail, HelmReleaseSummary } from "@/lib/k8s/types";
@@ -120,5 +122,59 @@ describe("releaseStatusTone", () => {
     expect(releaseStatusTone("failed")).toBe("red");
     expect(releaseStatusTone("pending-upgrade")).toBe("yellow");
     expect(releaseStatusTone("unknown")).toBe("gray");
+  });
+});
+
+describe("useHelmRevisions", () => {
+  it("lists revisions for a release", async () => {
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "list_helm_revisions") {
+        return Promise.resolve([
+          {
+            name: "web",
+            version: 2,
+            status: "deployed",
+            chart: "nginx",
+            chartVersion: "4.2.0",
+            lastDeployed: "2026-01-02T00:00:00Z",
+          },
+          {
+            name: "web",
+            version: 1,
+            status: "superseded",
+            chart: "nginx",
+            chartVersion: "4.1.0",
+            lastDeployed: "2026-01-01T00:00:00Z",
+          },
+        ]);
+      }
+      throw new Error(`unexpected ${cmd}`);
+    });
+
+    const { result } = renderHook(() => useHelmRevisions("ctx-a", "web"), { wrapper });
+    await waitFor(() => expect(result.current.data).toHaveLength(2));
+    expect(invokeMock).toHaveBeenCalledWith("list_helm_revisions", {
+      context: "ctx-a",
+      name: "web",
+    });
+  });
+});
+
+describe("useHelmReleaseRevision", () => {
+  it("fetches a specific revision", async () => {
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === "get_helm_release_revision") {
+        return Promise.resolve({ ...detail, version: 1, status: "superseded" });
+      }
+      throw new Error(`unexpected ${cmd}`);
+    });
+
+    const { result } = renderHook(() => useHelmReleaseRevision("ctx-a", "web", 1), { wrapper });
+    await waitFor(() => expect(result.current.data?.version).toBe(1));
+    expect(invokeMock).toHaveBeenCalledWith("get_helm_release_revision", {
+      context: "ctx-a",
+      name: "web",
+      version: 1,
+    });
   });
 });

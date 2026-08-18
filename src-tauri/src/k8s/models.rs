@@ -190,3 +190,21 @@ pub struct HelmReleaseDetail {
     /// Release notes.
     pub notes: String,
 }
+
+/// One stored revision of a Helm release.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HelmReleaseRevision {
+    /// Release name.
+    pub name: String,
+    /// Storage revision number.
+    pub version: i32,
+    /// Release status (deployed, failed, pending-upgrade, ...).
+    pub status: String,
+    /// Chart name.
+    pub chart: String,
+    /// Chart version.
+    pub chart_version: String,
+    /// When this revision was deployed.
+    pub last_deployed: String,
+}

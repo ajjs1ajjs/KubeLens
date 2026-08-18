@@ -40,6 +40,8 @@ pub fn run() {
             commands::metrics::get_node_metrics,
             commands::helm::list_helm_releases,
             commands::helm::get_helm_release,
+            commands::helm::get_helm_release_revision,
+            commands::helm::list_helm_revisions,
             commands::helm::uninstall_helm_release,
         ])
         .run(tauri::generate_context!())

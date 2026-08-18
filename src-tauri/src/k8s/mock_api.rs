@@ -90,13 +90,21 @@ fn node_metrics_list() -> String {
 /// Helm release storage secrets served by the mock.
 fn mock_secrets() -> Vec<serde_json::Value> {
     use crate::k8s::helm;
-    let web = helm::mock_release_secret(
+    let web_v1 = helm::mock_release_secret(
         "web",
         "default",
         1,
-        helm::ReleaseStatus::Deployed,
+        helm::ReleaseStatus::Superseded,
         "nginx",
         "4.1.0",
+    );
+    let web_v2 = helm::mock_release_secret(
+        "web",
+        "default",
+        2,
+        helm::ReleaseStatus::Deployed,
+        "nginx",
+        "4.2.0",
     );
     let db = helm::mock_release_secret(
         "postgres",
@@ -107,7 +115,8 @@ fn mock_secrets() -> Vec<serde_json::Value> {
         "12.5.0",
     );
     vec![
-        serde_json::to_value(&web).expect("serialize secret"),
+        serde_json::to_value(&web_v1).expect("serialize secret"),
+        serde_json::to_value(&web_v2).expect("serialize secret"),
         serde_json::to_value(&db).expect("serialize secret"),
     ]
 }

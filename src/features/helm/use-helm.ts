@@ -11,6 +11,14 @@ export function helmReleaseQueryKey(context: string, name: string): string[] {
   return ["helm", "release", context, name];
 }
 
+export function helmRevisionsQueryKey(context: string, name: string): string[] {
+  return ["helm", "revisions", context, name];
+}
+
+export function helmRevisionQueryKey(context: string, name: string, version: number): string[] {
+  return ["helm", "revision", context, name, String(version)];
+}
+
 /** Lists Helm releases for the active context. */
 export function useHelmReleases(context: string | null) {
   return useQuery({
@@ -26,6 +34,29 @@ export function useHelmRelease(context: string | null, name: string | null) {
     queryKey: helmReleaseQueryKey(context ?? "", name ?? ""),
     queryFn: () => k8sApi.getHelmRelease(context as string, name as string),
     enabled: Boolean(context && name),
+  });
+}
+
+/** Fetches every stored revision of a release. */
+export function useHelmRevisions(context: string | null, name: string | null) {
+  return useQuery({
+    queryKey: helmRevisionsQueryKey(context ?? "", name ?? ""),
+    queryFn: () => k8sApi.listHelmRevisions(context as string, name as string),
+    enabled: Boolean(context && name),
+  });
+}
+
+/** Fetches the detail for a specific revision. */
+export function useHelmReleaseRevision(
+  context: string | null,
+  name: string | null,
+  version: number | null,
+) {
+  return useQuery({
+    queryKey: helmRevisionQueryKey(context ?? "", name ?? "", version ?? 0),
+    queryFn: () =>
+      k8sApi.getHelmReleaseRevision(context as string, name as string, version as number),
+    enabled: Boolean(context && name && version !== null),
   });
 }
 

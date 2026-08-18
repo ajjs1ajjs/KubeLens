@@ -10,7 +10,7 @@ use kube::api::{Api, DeleteParams, ListParams, ObjectList};
 use prost::Message;
 
 use crate::k8s::cluster_manager::ClusterManager;
-use crate::k8s::models::{HelmReleaseDetail, HelmReleaseSummary};
+use crate::k8s::models::{HelmReleaseDetail, HelmReleaseRevision, HelmReleaseSummary};
 
 #[cfg(test)]
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
@@ -64,7 +64,72 @@ pub async fn release_detail(
     name: &str,
 ) -> Result<HelmReleaseDetail, String> {
     let client = manager.client(context).await?;
-    let api = releases_api(&client);
+    let secrets = revision_secrets(&client, name).await?;
+    let (_, secret) = secrets
+        .into_iter()
+        .next()
+        .ok_or_else(|| format!("Helm release {name} not found"))?;
+    let summary = decode_release_secret(&secret)?;
+    let payload = decode_payload(&secret)?.ok_or_else(|| "Release payload is empty".to_string())?;
+
+    Ok(HelmReleaseDetail {
+        summary,
+        values: payload.config,
+        manifest: payload.manifest,
+        notes: payload.notes,
+    })
+}
+
+/// Fetches the detail for a specific revision of a release.
+pub async fn release_detail_at(
+    manager: &ClusterManager,
+    context: &str,
+    name: &str,
+    version: i32,
+) -> Result<HelmReleaseDetail, String> {
+    let client = manager.client(context).await?;
+    let secrets = revision_secrets(&client, name).await?;
+    let (_, secret) = secrets
+        .into_iter()
+        .find(|(v, _)| *v == version)
+        .ok_or_else(|| format!("Helm release {name} has no revision {version}"))?;
+    let summary = decode_release_secret(&secret)?;
+    let payload = decode_payload(&secret)?.ok_or_else(|| "Release payload is empty".to_string())?;
+
+    Ok(HelmReleaseDetail {
+        summary,
+        values: payload.config,
+        manifest: payload.manifest,
+        notes: payload.notes,
+    })
+}
+
+/// Lists every stored revision of a release, newest first.
+pub async fn release_revisions(
+    manager: &ClusterManager,
+    context: &str,
+    name: &str,
+) -> Result<Vec<HelmReleaseRevision>, String> {
+    let client = manager.client(context).await?;
+    let secrets = revision_secrets(&client, name).await?;
+    let mut revisions = Vec::new();
+    for (version, secret) in secrets {
+        let summary = decode_release_secret(&secret)?;
+        revisions.push(HelmReleaseRevision {
+            name: summary.name,
+            version,
+            status: summary.status,
+            chart: summary.chart,
+            chart_version: summary.chart_version,
+            last_deployed: summary.last_deployed,
+        });
+    }
+    Ok(revisions)
+}
+
+/// Lists the release storage secrets for a name, sorted newest revision first.
+async fn revision_secrets(client: &kube::Client, name: &str) -> Result<Vec<(i32, Secret)>, String> {
+    let api = releases_api(client);
     let list: ObjectList<Secret> = api
         .list(&ListParams {
             label_selector: Some(format!("{OWNER_LABEL},name={name}")),
@@ -87,20 +152,7 @@ pub async fn release_detail(
         })
         .collect();
     versions.sort_by_key(|b| std::cmp::Reverse(b.0));
-
-    let (_, secret) = versions
-        .into_iter()
-        .next()
-        .ok_or_else(|| format!("Helm release {name} not found"))?;
-    let summary = decode_release_secret(&secret)?;
-    let payload = decode_payload(&secret)?.ok_or_else(|| "Release payload is empty".to_string())?;
-
-    Ok(HelmReleaseDetail {
-        summary,
-        values: payload.config,
-        manifest: payload.manifest,
-        notes: payload.notes,
-    })
+    Ok(versions)
 }
 
 /// Deletes every revision of a release from the storage backend.
@@ -497,5 +549,31 @@ mod tests {
         assert!(detail.manifest.contains("kind: ConfigMap"));
         assert_eq!(detail.values, r#"{"replicas":2}"#);
         assert_eq!(detail.notes, "Release ready.");
+    }
+
+    #[tokio::test]
+    async fn lists_all_revisions_against_mock() {
+        let server = mock_api::MockApiServer::start().await;
+        let manager = manager_with_mock(&server).await;
+        let revisions = super::release_revisions(&manager, CTX, "web")
+            .await
+            .expect("revisions");
+        // Newest first.
+        assert_eq!(revisions[0].version, 2);
+        assert_eq!(revisions[0].status, "deployed");
+        assert_eq!(revisions[1].version, 1);
+        assert_eq!(revisions[1].status, "superseded");
+    }
+
+    #[tokio::test]
+    async fn fetches_detail_at_specific_revision_against_mock() {
+        let server = mock_api::MockApiServer::start().await;
+        let manager = manager_with_mock(&server).await;
+        let detail = super::release_detail_at(&manager, CTX, "web", 1)
+            .await
+            .expect("detail");
+        assert_eq!(detail.summary.version, 1);
+        assert_eq!(detail.summary.status, "superseded");
+        assert!(detail.manifest.contains("kind: ConfigMap"));
     }
 }

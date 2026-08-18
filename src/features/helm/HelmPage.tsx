@@ -20,6 +20,7 @@ import {
   useHelmReleases,
   useUninstallHelmRelease,
 } from "@/features/helm/use-helm";
+import { ReleaseDiffTab } from "@/features/helm/ReleaseDiffTab";
 import type { HelmReleaseSummary } from "@/lib/k8s/types";
 
 const STATUS_TONES: Record<string, string> = {
@@ -78,6 +79,7 @@ function ReleaseDetailSheet({
                 <TabsTrigger value="values">Values</TabsTrigger>
                 <TabsTrigger value="manifest">Manifest</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="diff">Diff</TabsTrigger>
               </TabsList>
               <TabsContent value="values" className="min-h-0 flex-1 overflow-auto">
                 <pre className="bg-muted/50 rounded-md p-3 text-xs">
@@ -89,6 +91,9 @@ function ReleaseDetailSheet({
               </TabsContent>
               <TabsContent value="notes" className="min-h-0 flex-1 overflow-auto">
                 <pre className="bg-muted/50 rounded-md p-3 text-xs">{data?.notes || "—"}</pre>
+              </TabsContent>
+              <TabsContent value="diff" className="min-h-0 flex-1 overflow-hidden">
+                <ReleaseDiffTab context={context} name={release.name} />
               </TabsContent>
             </Tabs>
           )}

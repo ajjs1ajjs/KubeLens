@@ -4,6 +4,7 @@ import type {
   ClusterSummary,
   ExecEvent,
   HelmReleaseDetail,
+  HelmReleaseRevision,
   HelmReleaseSummary,
   K8sObject,
   LogEvent,
@@ -91,6 +92,12 @@ export const k8sApi = {
 
   getHelmRelease: (context: string, name: string) =>
     invoke<HelmReleaseDetail>("get_helm_release", { context, name }),
+
+  getHelmReleaseRevision: (context: string, name: string, version: number) =>
+    invoke<HelmReleaseDetail>("get_helm_release_revision", { context, name, version }),
+
+  listHelmRevisions: (context: string, name: string) =>
+    invoke<HelmReleaseRevision[]>("list_helm_revisions", { context, name }),
 
   uninstallHelmRelease: (context: string, name: string) =>
     invoke<void>("uninstall_helm_release", { context, name }),

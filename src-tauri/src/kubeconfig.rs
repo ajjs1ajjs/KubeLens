@@ -59,7 +59,10 @@ pub fn load_kubeconfig() -> Result<Kubeconfig, String> {
 /// Loads a single explicit kubeconfig file (used for a user-chosen path).
 pub fn load_kubeconfig_from(path: &Path) -> Result<Kubeconfig, String> {
     if !path.exists() {
-        return Err(format!("Kubeconfig file does not exist: {}", path.display()));
+        return Err(format!(
+            "Kubeconfig file does not exist: {}",
+            path.display()
+        ));
     }
     Kubeconfig::read_from(path).map_err(|e| format!("Failed to parse {}: {e}", path.display()))
 }

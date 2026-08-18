@@ -56,7 +56,10 @@ impl ClusterManager {
     }
 
     /// Sets a custom kubeconfig path (or clears it when `None`) and reloads.
-    pub fn set_kubeconfig_path(&self, path: Option<std::path::PathBuf>) -> Result<Kubeconfig, String> {
+    pub fn set_kubeconfig_path(
+        &self,
+        path: Option<std::path::PathBuf>,
+    ) -> Result<Kubeconfig, String> {
         *self.custom_kubeconfig.lock().unwrap() = path;
         self.reload()
     }

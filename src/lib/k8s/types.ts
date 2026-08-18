@@ -104,3 +104,13 @@ export interface HelmReleaseDetail extends HelmReleaseSummary {
   manifest: string;
   notes: string;
 }
+
+/** One stored revision of a Helm release. */
+export interface HelmReleaseRevision {
+  name: string;
+  version: number;
+  status: string;
+  chart: string;
+  chartVersion: string;
+  lastDeployed: string;
+}
