@@ -12,6 +12,15 @@ export interface ClusterSummary {
   error: string | null;
 }
 
+/** A user-managed cluster configuration (one kubeconfig file). */
+export interface ClusterConfig {
+  id: string;
+  name: string;
+  path: string;
+  active: boolean;
+  contexts: ClusterSummary[];
+}
+
 /** Identifies a resource set to query on the backend. */
 export interface ResourceContext {
   context: string;

@@ -7,11 +7,13 @@ import { UpdateBanner } from "@/features/updates/UpdateBanner";
 import {
   useActiveClusterConnect,
   useAutoSelectCluster,
+  useClusterConfigs,
   useClusters,
 } from "@/features/clusters/use-clusters";
 
 export function AppLayout() {
   useClusters();
+  useClusterConfigs();
   useAutoSelectCluster();
   useActiveClusterConnect();
 

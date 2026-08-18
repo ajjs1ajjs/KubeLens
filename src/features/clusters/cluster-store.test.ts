@@ -11,7 +11,12 @@ const cluster = (id: string) => ({
 
 describe("cluster-store", () => {
   beforeEach(() => {
-    useClusterStore.setState({ clusters: [], activeClusterId: null, activeNamespace: "" });
+    useClusterStore.setState({
+      clusters: [],
+      configs: [],
+      activeClusterId: null,
+      activeNamespace: "",
+    });
   });
 
   it("upserts clusters by id", () => {
@@ -105,5 +110,39 @@ describe("cluster-store", () => {
     expect(useClusterStore.getState().activeNamespace).toBe("kube-system");
     useClusterStore.getState().setActiveNamespace("");
     expect(useClusterStore.getState().activeNamespace).toBe("");
+  });
+
+  it("loads configs and shows only the active config's contexts", () => {
+    const summary = (name: string, current: boolean) => ({
+      name,
+      server: `https://${name}`,
+      namespace: null,
+      current,
+      connected: false,
+      version: null,
+      error: null,
+    });
+    useClusterStore.getState().setConfigs([
+      {
+        id: "cfg-a",
+        name: "Alpha",
+        path: "/a",
+        active: false,
+        contexts: [summary("alpha-ctx", true)],
+      },
+      {
+        id: "cfg-b",
+        name: "Beta",
+        path: "/b",
+        active: true,
+        contexts: [summary("beta-ctx", true), summary("beta-ctx2", false)],
+      },
+    ]);
+
+    const { configs, clusters, activeClusterId } = useClusterStore.getState();
+    expect(configs).toHaveLength(2);
+    expect(clusters).toHaveLength(2);
+    expect(clusters.map((c) => c.id)).toEqual(["beta-ctx", "beta-ctx2"]);
+    expect(activeClusterId).toBe("beta-ctx");
   });
 });

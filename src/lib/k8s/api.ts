@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
+  ClusterConfig,
   ClusterSummary,
   ExecEvent,
   HelmReleaseDetail,
@@ -30,10 +31,19 @@ export const k8sApi = {
 
   reloadKubeconfig: () => invoke<ClusterSummary[]>("reload_kubeconfig"),
 
-  getKubeconfigPath: () => invoke<string | null>("get_kubeconfig_path"),
+  listClusterConfigs: () => invoke<ClusterConfig[]>("list_cluster_configs"),
 
-  setKubeconfigPath: (path: string | null) =>
-    invoke<ClusterSummary[]>("set_kubeconfig_path", { path }),
+  getClusterConfigs: () => invoke<ClusterConfig[]>("get_cluster_configs"),
+
+  addClusterConfig: (path: string) => invoke<ClusterConfig[]>("add_cluster_config", { path }),
+
+  renameClusterConfig: (id: string, name: string) =>
+    invoke<ClusterConfig[]>("rename_cluster_config", { id, name }),
+
+  removeClusterConfig: (id: string) => invoke<ClusterConfig[]>("remove_cluster_config", { id }),
+
+  setActiveClusterConfig: (id: string | null) =>
+    invoke<ClusterConfig[]>("set_active_cluster_config", { id }),
 
   listResources: (ctx: ResourceContext) => invoke<K8sObject[]>("list_resources", { ctx }),
 

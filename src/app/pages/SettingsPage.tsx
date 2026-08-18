@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme } from "next-themes";
-import { FolderOpen, Monitor, Moon, RefreshCw, RotateCcw, Sun } from "lucide-react";
+import { FolderOpen, Monitor, Moon, RefreshCw, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -32,8 +32,8 @@ const THEME_OPTIONS = [
 
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null);
-  const [customPath, setCustomPath] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  const configs = useClusterStore((s) => s.configs);
   const clusters = useClusterStore((s) => s.clusters);
   const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
@@ -42,41 +42,26 @@ export function SettingsPage() {
     invoke<AppInfo>("app_info")
       .then(setInfo)
       .catch(() => {});
-    k8sApi
-      .getKubeconfigPath()
-      .then(setCustomPath)
-      .catch(() => {});
   }, []);
 
   const refresh = async () => {
     await k8sApi.reloadKubeconfig();
     await queryClient.invalidateQueries({ queryKey: ["clusters"] });
+    await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
   };
 
-  const handlePick = async () => {
+  const handleAdd = async () => {
     setPicking(true);
     try {
-      const picked = await open({
-        multiple: false,
-        directory: false,
-      });
+      const picked = await open({ multiple: false, directory: false });
       if (typeof picked === "string") {
-        const summaries = await k8sApi.setKubeconfigPath(picked);
-        useClusterStore.getState().syncClusters(summaries);
-        setCustomPath(picked);
+        await k8sApi.addClusterConfig(picked);
+        await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
       }
     } finally {
       setPicking(false);
     }
   };
-
-  const handleClear = async () => {
-    const summaries = await k8sApi.setKubeconfigPath(null);
-    useClusterStore.getState().syncClusters(summaries);
-    setCustomPath(null);
-  };
-
-  const activePath = customPath ?? info?.default_kubeconfig ?? null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
@@ -119,33 +104,38 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3 text-sm">
             <div>
-              <div className="text-muted-foreground text-xs">kubeconfig</div>
-              <code className="bg-muted/50 mt-1 block rounded-md px-2 py-1.5 text-xs break-all">
-                {activePath ?? "—"}
-              </code>
-              {customPath && (
+              <div className="text-muted-foreground text-xs">Cluster configs</div>
+              {configs.length === 0 ? (
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Custom path (overrides default).
+                  No configs added. Add a kubeconfig file below.
                 </p>
+              ) : (
+                <ul className="mt-1 flex flex-col gap-1">
+                  {configs.map((config) => (
+                    <li key={config.id} className="flex items-center gap-2">
+                      <span
+                        className={`size-1.5 rounded-full ${config.active ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+                      />
+                      <span className="min-w-0 truncate text-xs font-medium">{config.name}</span>
+                      <code className="text-muted-foreground ml-auto truncate text-[11px]">
+                        {config.path}
+                      </code>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handlePick} disabled={picking}>
+              <Button variant="outline" size="sm" onClick={handleAdd} disabled={picking}>
                 <FolderOpen className="size-3.5" />
-                Choose kubeconfig…
+                Add kubeconfig…
               </Button>
-              {customPath && (
-                <Button variant="ghost" size="sm" onClick={handleClear}>
-                  <RotateCcw className="size-3.5" />
-                  Reset to default
-                </Button>
-              )}
               <Button variant="outline" size="sm" onClick={refresh}>
                 <RefreshCw className="size-3.5" />
                 Reload
               </Button>
               <span className="text-muted-foreground text-xs">
-                {clusters.length} cluster{clusters.length === 1 ? "" : "s"} found
+                {clusters.length} cluster{clusters.length === 1 ? "" : "s"} in active config
               </span>
             </div>
           </CardContent>

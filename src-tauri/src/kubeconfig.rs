@@ -70,8 +70,23 @@ pub fn load_kubeconfig_from(path: &Path) -> Result<Kubeconfig, String> {
 /// Filename used to persist the user-chosen kubeconfig path.
 const SETTINGS_FILE: &str = "settings.json";
 
-/// Reads the persisted custom kubeconfig path, if any.
-pub fn load_custom_kubeconfig_path(config_dir: &Path) -> Option<String> {
+/// Reads the persisted list of cluster configs as `[{id,name,path}]`.
+pub fn load_cluster_configs(config_dir: &Path) -> Vec<serde_json::Value> {
+    let path = config_dir.join(SETTINGS_FILE);
+    if !path.exists() {
+        return Vec::new();
+    }
+    let content = std::fs::read_to_string(&path).ok().unwrap_or_default();
+    let value: serde_json::Value = serde_json::from_str(&content).ok().unwrap_or_default();
+    value
+        .get("clusterConfigs")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// Reads the persisted id of the active cluster config, if any.
+pub fn load_active_config_id(config_dir: &Path) -> Option<String> {
     let path = config_dir.join(SETTINGS_FILE);
     if !path.exists() {
         return None;
@@ -79,14 +94,18 @@ pub fn load_custom_kubeconfig_path(config_dir: &Path) -> Option<String> {
     let content = std::fs::read_to_string(&path).ok()?;
     let value: serde_json::Value = serde_json::from_str(&content).ok()?;
     value
-        .get("kubeconfigPath")
+        .get("activeConfigId")
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
 }
 
-/// Persists (or clears, when `path` is `None`) the custom kubeconfig path.
-pub fn save_custom_kubeconfig_path(config_dir: &Path, path: Option<&str>) {
+/// Persists the list of cluster configs and the active id.
+pub fn save_cluster_configs(
+    config_dir: &Path,
+    configs: &[serde_json::Value],
+    active_id: Option<&str>,
+) {
     let path_buf = config_dir.join(SETTINGS_FILE);
     let _ = std::fs::create_dir_all(config_dir);
     let mut settings = if path_buf.exists() {
@@ -97,12 +116,13 @@ pub fn save_custom_kubeconfig_path(config_dir: &Path, path: Option<&str>) {
     } else {
         serde_json::json!({})
     };
-    match path {
-        Some(p) if !p.is_empty() => {
-            settings["kubeconfigPath"] = serde_json::Value::String(p.to_string());
+    settings["clusterConfigs"] = serde_json::Value::Array(configs.to_vec());
+    match active_id {
+        Some(id) if !id.is_empty() => {
+            settings["activeConfigId"] = serde_json::Value::String(id.to_string());
         }
         _ => {
-            settings.as_object_mut().map(|o| o.remove("kubeconfigPath"));
+            settings.as_object_mut().map(|o| o.remove("activeConfigId"));
         }
     }
     if let Ok(content) = serde_json::to_string_pretty(&settings) {

@@ -208,3 +208,19 @@ pub struct HelmReleaseRevision {
     /// When this revision was deployed.
     pub last_deployed: String,
 }
+
+/// A user-managed cluster configuration (one kubeconfig file).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterConfig {
+    /// Stable id for this config.
+    pub id: String,
+    /// User-editable display name.
+    pub name: String,
+    /// Absolute path to the kubeconfig file.
+    pub path: String,
+    /// Whether this config is the active one.
+    pub active: bool,
+    /// Contexts available within this config.
+    pub contexts: Vec<ClusterSummary>,
+}

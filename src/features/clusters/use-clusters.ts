@@ -20,6 +20,23 @@ export function useClusters() {
   return query;
 }
 
+/** Loads the managed cluster configs and syncs them into the store. */
+export function useClusterConfigs() {
+  const query = useQuery({
+    queryKey: ["cluster-configs"],
+    queryFn: () => k8sApi.listClusterConfigs(),
+    staleTime: 10_000,
+  });
+
+  const setConfigs = useClusterStore((s) => s.setConfigs);
+
+  useEffect(() => {
+    if (query.data) setConfigs(query.data);
+  }, [query.data, setConfigs]);
+
+  return query;
+}
+
 /** Selects the current-context cluster once on first load. */
 export function useAutoSelectCluster() {
   const activeClusterId = useClusterStore((s) => s.activeClusterId);
