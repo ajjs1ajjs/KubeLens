@@ -32,13 +32,6 @@ real-time cluster views via the Kubernetes watch API.
 | 🕸️ **Topology**         | Visual dependency graph of your workloads                          |
 | ✍️ **YAML editor**      | View, edit and apply manifests with validation                     |
 
-
-
-Planned next:
-
-- CPU/RAM metrics charts for resource requests/limits
-- Release diffing / resource dependency drill-down from the topology
-
 ## Requirements
 
 - Node.js 20+ and npm
