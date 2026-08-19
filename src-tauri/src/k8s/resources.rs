@@ -32,7 +32,7 @@ pub async fn list(
     manager: &ClusterManager,
     ctx: &ResourceContext,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let client = manager.client(&ctx.context).await?;
+    let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let list = api.list(&ListParams::default()).await.map_err(kube_error)?;
     list.items
@@ -47,7 +47,7 @@ pub async fn get(
     ctx: &ResourceContext,
     name: &str,
 ) -> Result<serde_json::Value, String> {
-    let client = manager.client(&ctx.context).await?;
+    let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let object = api.get(name).await.map_err(kube_error)?;
     serde_json::to_value(&object).map_err(|e| format!("Failed to serialize: {e}"))
@@ -59,7 +59,7 @@ pub async fn delete(
     ctx: &ResourceContext,
     name: &str,
 ) -> Result<(), String> {
-    let client = manager.client(&ctx.context).await?;
+    let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let _ = api
         .delete(name, &DeleteParams::default())
@@ -119,7 +119,7 @@ pub async fn apply_yaml(
     let object: DynamicObject = serde_json::from_value(body)
         .map_err(|e| format!("Manifest is not a valid Kubernetes object: {e}"))?;
 
-    let client = manager.client(&ctx.context).await?;
+    let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let params = PatchParams::apply("kubelens").force();
     let applied = api

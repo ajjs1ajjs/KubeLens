@@ -20,13 +20,29 @@ pub fn list_cluster_configs(
     manager.list_configs()
 }
 
-/// Connects to a context and verifies the API server is reachable.
+/// Connects to a context and verifies the API server is reachable. When
+/// `config_id` is non-empty the client is built from that config, allowing
+/// several clusters (across configs) to be connected at once.
 #[tauri::command]
 pub async fn connect_cluster(
     context: String,
+    config_id: Option<String>,
     manager: State<'_, ClusterManager>,
 ) -> Result<ClusterSummary, String> {
-    manager.connect(&context).await
+    manager
+        .connect_for(config_id.as_deref().filter(|s| !s.is_empty()), &context)
+        .await
+}
+
+/// Drops the cached client for a context, marking it disconnected.
+#[tauri::command]
+pub fn disconnect_cluster(
+    context: String,
+    config_id: Option<String>,
+    manager: State<'_, ClusterManager>,
+) -> Result<(), String> {
+    manager.disconnect(config_id.as_deref().filter(|s| !s.is_empty()), &context);
+    Ok(())
 }
 
 /// Re-reads the active kubeconfig from disk and returns the updated context list.

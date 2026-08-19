@@ -70,6 +70,7 @@ pub async fn list_namespaces(
 ) -> Result<Vec<String>, String> {
     let ctx = ResourceContext {
         context,
+        config_id: String::new(),
         group: String::new(),
         version: "v1".into(),
         kind: "Namespace".into(),

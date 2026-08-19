@@ -28,12 +28,27 @@
     "noClustersHint": "Point KUBECONFIG at a valid file, then press reload.",
     "resources": "Resources",
     "features": {
-      "browser": { "title": "Resource browser", "description": "Pods, Deployments, Services and more with live updates." },
-      "logs": { "title": "Logs, exec & port-forward", "description": "Stream logs, open a terminal and forward ports to localhost." },
-      "yaml": { "title": "YAML editor", "description": "View, edit and apply manifests with validation." },
-      "metrics": { "title": "Metrics", "description": "CPU and memory usage for nodes and pods in real time." },
+      "browser": {
+        "title": "Resource browser",
+        "description": "Pods, Deployments, Services and more with live updates."
+      },
+      "logs": {
+        "title": "Logs, exec & port-forward",
+        "description": "Stream logs, open a terminal and forward ports to localhost."
+      },
+      "yaml": {
+        "title": "YAML editor",
+        "description": "View, edit and apply manifests with validation."
+      },
+      "metrics": {
+        "title": "Metrics",
+        "description": "CPU and memory usage for nodes and pods in real time."
+      },
       "helm": { "title": "Helm", "description": "Browse and manage Helm releases." },
-      "topology": { "title": "Topology", "description": "Visual dependency graph between your workloads." }
+      "topology": {
+        "title": "Topology",
+        "description": "Visual dependency graph between your workloads."
+      }
     },
     "noServer": "no server",
     "connected": "Connected",
@@ -214,6 +229,6 @@
     "connected": "connected",
     "offline": "offline",
     "allNamespaces": "All namespaces",
-        "toggleTheme": "Toggle theme"
+    "toggleTheme": "Toggle theme"
   }
 }

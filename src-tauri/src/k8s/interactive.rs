@@ -33,8 +33,8 @@ pub async fn pod_logs(
     container: Option<String>,
     tail_lines: Option<i64>,
 ) -> Result<String, String> {
-    let client = manager.client(&ctx.context).await?;
-    let api = pod_api(&client, ctx);
+let client = manager.client_ctx(&ctx).await?;
+        let api = pod_api(&client, ctx);
     let params = LogParams {
         container,
         tail_lines,
@@ -65,7 +65,7 @@ pub async fn stream_logs<F>(
     F: Fn(LogEvent) + Send + 'static,
 {
     let result: Result<(), String> = async {
-        let client = manager.client(&ctx.context).await?;
+        let client = manager.client_ctx(&ctx).await?;
         let api = pod_api(&client, &ctx);
         let params = LogParams {
             container,
@@ -239,7 +239,7 @@ async fn run_exec<F>(
     F: Fn(ExecEvent) + Send + 'static,
 {
     let setup = async {
-        let client = manager.client(&ctx.context).await?;
+        let client = manager.client_ctx(&ctx).await?;
         let api: Api<Pod> = pod_api(&client, &ctx);
         let params = AttachParams {
             container,
@@ -383,7 +383,7 @@ impl PortForwardManager {
         name: String,
         remote_port: u16,
     ) -> Result<PortForwardStart, String> {
-        let client = manager.client(&ctx.context).await?;
+        let client = manager.client_ctx(&ctx).await?;
         let api = pod_api(&client, &ctx);
         let mut pf = api
             .portforward(&name, &[remote_port])

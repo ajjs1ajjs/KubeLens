@@ -26,6 +26,10 @@ pub struct ClusterSummary {
 pub struct ResourceContext {
     /// Kubeconfig context (cluster) name.
     pub context: String,
+    /// Id of the cluster config this context belongs to. Empty means the
+    /// active config.
+    #[serde(default)]
+    pub config_id: String,
     /// API group, empty for core resources.
     pub group: String,
     /// API version, e.g. `v1`.

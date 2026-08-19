@@ -148,9 +148,14 @@ impl ClusterManager {
         Ok(contexts_for(&config))
     }
 
-    /// Connects to a context, verifying the API server is reachable.
-    pub async fn connect(&self, context: &str) -> Result<ClusterSummary, String> {
-        let client = self.client(context).await?;
+    /// Connects to a context in a specific config (or the active one when
+    /// `config_id` is `None`), verifying the API server is reachable.
+    pub async fn connect_for(
+        &self,
+        config_id: Option<&str>,
+        context: &str,
+    ) -> Result<ClusterSummary, String> {
+        let client = self.client_for(config_id, context).await?;
         let version = client
             .apiserver_version()
             .await
@@ -168,13 +173,38 @@ impl ClusterManager {
         })
     }
 
-    /// Returns a cached `kube::Client` for a context, building one on demand.
+    /// Returns a cached `kube::Client` for a context in the active config,
+    /// building one on demand.
     pub async fn client(&self, context: &str) -> Result<Client, String> {
-        if let Some(c) = self.clients.lock().unwrap().get(context) {
+        self.client_for(None, context).await
+    }
+
+    /// Returns a client for the context described by a `ResourceContext`,
+    /// resolving the owning config when `config_id` is set.
+    pub async fn client_ctx(&self, ctx: &crate::k8s::models::ResourceContext) -> Result<Client, String> {
+        let config_id = (!ctx.config_id.is_empty()).then_some(ctx.config_id.as_str());
+        self.client_for(config_id, &ctx.context).await
+    }
+
+    /// Returns a cached `kube::Client` for a context in a specific config
+    /// (or the active config when `config_id` is `None`), building on demand.
+    pub async fn client_for(
+        &self,
+        config_id: Option<&str>,
+        context: &str,
+    ) -> Result<Client, String> {
+        let key = match config_id {
+            Some(id) => format!("{id}::{context}"),
+            None => context.to_string(),
+        };
+        if let Some(c) = self.clients.lock().unwrap().get(&key) {
             return Ok(c.clone());
         }
 
-        let config = self.config()?;
+        let config = match config_id {
+            Some(id) => self.config_by_id(id)?,
+            None => self.config()?,
+        };
         let options = KubeConfigOptions {
             context: Some(context.to_string()),
             ..Default::default()
@@ -185,11 +215,29 @@ impl ClusterManager {
         let client = Client::try_from(kube_config)
             .map_err(|e| format!("Failed to build client for context '{context}': {e}"))?;
 
-        self.clients
-            .lock()
-            .unwrap()
-            .insert(context.to_string(), client.clone());
+        self.clients.lock().unwrap().insert(key, client.clone());
         Ok(client)
+    }
+
+    /// Loads the kubeconfig for a specific managed config by id.
+    fn config_by_id(&self, config_id: &str) -> Result<Kubeconfig, String> {
+        let configs = self.configs.lock().unwrap();
+        let path = configs
+            .iter()
+            .find(|c| c.id == config_id)
+            .map(|c| c.path.clone())
+            .ok_or_else(|| format!("Cluster config not found: {config_id}"))?;
+        crate::kubeconfig::load_kubeconfig_from(&path)
+    }
+
+    /// Drops the cached client for a context (in a specific config, or the
+    /// active one when `config_id` is `None`).
+    pub fn disconnect(&self, config_id: Option<&str>, context: &str) {
+        let key = match config_id {
+            Some(id) => format!("{id}::{context}"),
+            None => context.to_string(),
+        };
+        self.clients.lock().unwrap().remove(&key);
     }
 }
 

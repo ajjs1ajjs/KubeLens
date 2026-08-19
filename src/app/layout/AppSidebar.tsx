@@ -46,10 +46,7 @@ function ConfigContextRow({
 }) {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        isActive={active}
-        onClick={onSelect}
-      >
+      <SidebarMenuButton isActive={active} onClick={onSelect}>
         <Server className="size-4" />
         <span className="truncate">{name}</span>
       </SidebarMenuButton>

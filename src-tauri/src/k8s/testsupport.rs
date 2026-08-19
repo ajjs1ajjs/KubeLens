@@ -48,6 +48,7 @@ current-context: {CTX}
 pub fn pod_ctx() -> ResourceContext {
     ResourceContext {
         context: CTX.into(),
+        config_id: String::new(),
         group: String::new(),
         version: "v1".into(),
         kind: "Pod".into(),

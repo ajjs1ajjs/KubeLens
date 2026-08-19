@@ -17,11 +17,7 @@ import {
 import { useClusterStore } from "@/features/clusters/cluster-store";
 import { k8sApi } from "@/lib/k8s/api";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  LANGUAGE_STORAGE_KEY,
-  SUPPORTED_LANGUAGES,
-  type Language,
-} from "@/i18n";
+import { LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES, type Language } from "@/i18n";
 
 interface AppInfo {
   name: string;
@@ -106,7 +102,9 @@ export function SettingsPage() {
                     <SelectItem key={option.value} value={option.value}>
                       <span className="flex items-center gap-2">
                         <option.icon className="size-3.5" />
-                        {t(`settings.theme${option.value[0].toUpperCase()}${option.value.slice(1)}`)}
+                        {t(
+                          `settings.theme${option.value[0].toUpperCase()}${option.value.slice(1)}`,
+                        )}
                       </span>
                     </SelectItem>
                   ))}

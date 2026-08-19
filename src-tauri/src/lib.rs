@@ -44,6 +44,7 @@ pub fn run() {
             commands::clusters::remove_cluster_config,
             commands::clusters::set_active_cluster_config,
             commands::clusters::connect_cluster,
+            commands::clusters::disconnect_cluster,
             commands::clusters::reload_kubeconfig,
             commands::resources::list_resources,
             commands::resources::get_resource,

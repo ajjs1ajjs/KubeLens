@@ -17,7 +17,7 @@ pub async fn pod_metrics(
     manager: &ClusterManager,
     ctx: &ResourceContext,
 ) -> Result<Vec<PodMetric>, String> {
-    let client = manager.client(&ctx.context).await?;
+    let client = manager.client_ctx(ctx).await?;
     let resource = metrics_resource("PodMetrics", "pods");
     let api = if ctx.namespace.is_empty() {
         Api::all_with(client.clone(), &resource)
@@ -40,7 +40,7 @@ pub async fn node_metrics(
     manager: &ClusterManager,
     ctx: &ResourceContext,
 ) -> Result<Vec<NodeMetric>, String> {
-    let client = manager.client(&ctx.context).await?;
+    let client = manager.client_ctx(ctx).await?;
     let resource = metrics_resource("NodeMetrics", "nodes");
     let api = Api::all_with(client, &resource);
     let list = api

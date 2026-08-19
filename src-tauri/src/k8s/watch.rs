@@ -41,7 +41,7 @@ impl WatchManager {
         ctx: ResourceContext,
     ) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
-        let client = manager.client(&ctx.context).await?;
+        let client = manager.client_ctx(&ctx).await?;
         let api = resources::api(&client, &ctx);
 
         let emit_app = app.clone();
