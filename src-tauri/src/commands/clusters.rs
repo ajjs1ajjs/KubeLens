@@ -94,7 +94,12 @@ pub fn add_cluster_config(
     let id = Uuid::new_v4().to_string();
     let name = default_config_name(&path);
     stored.push(serde_json::json!({ "id": id, "name": name, "path": path }));
-    let active = crate::kubeconfig::load_active_config_id(&dir);
+    // Auto-activate this config when no config is active yet, so its clusters
+    // are immediately visible instead of showing an empty resource page.
+    let mut active = crate::kubeconfig::load_active_config_id(&dir);
+    if active.is_none() {
+        active = Some(id.clone());
+    }
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
     manager.set_configs(config_entries_from_stored(&stored), active)?;
     manager.list_configs()

@@ -25,7 +25,13 @@ pub fn run() {
             let stored = kubeconfig::load_cluster_configs(&dir);
             let active = kubeconfig::load_active_config_id(&dir);
             let entries = k8s::cluster_manager::config_entries_from_stored(&stored);
-            let _ = manager.set_configs(entries, active);
+            // Fall back to the first config when no (or an invalid) active
+            // config id is persisted, so clusters are always visible.
+            let effective_active = match &active {
+                Some(id) if entries.iter().any(|e| &e.id == id) => active.clone(),
+                _ => entries.first().map(|e| e.id.clone()),
+            };
+            let _ = manager.set_configs(entries, effective_active);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

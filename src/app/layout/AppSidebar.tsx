@@ -35,15 +35,20 @@ import { k8sApi } from "@/lib/k8s/api";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ClusterConfig } from "@/lib/k8s/types";
 
-function ConfigContextRow({ name, active }: { name: string; active: boolean }) {
+function ConfigContextRow({
+  name,
+  active,
+  onSelect,
+}: {
+  name: string;
+  active: boolean;
+  onSelect: () => void;
+}) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         isActive={active}
-        onClick={() => {
-          useClusterStore.getState().setActiveCluster(name);
-          useClusterStore.getState().setActiveNamespace("");
-        }}
+        onClick={onSelect}
       >
         <Server className="size-4" />
         <span className="truncate">{name}</span>
@@ -158,6 +163,13 @@ function ConfigRow({
                 key={ctx.name}
                 name={ctx.name}
                 active={ctx.name === activeContext}
+                onSelect={() => {
+                  // Select the context AND ensure its config is the active one
+                  // so the backend serves resources from this cluster.
+                  void onActivate();
+                  useClusterStore.getState().setActiveCluster(ctx.name);
+                  useClusterStore.getState().setActiveNamespace("");
+                }}
               />
             ))}
           </SidebarMenu>
