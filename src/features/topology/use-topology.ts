@@ -22,7 +22,7 @@ export const TOPOLOGY_KINDS = [
 ] as const;
 
 export function topologyQueryKey(ctx: ResourceContext): string[] {
-  return ["topology", ctx.context, ctx.namespace || "__all__"];
+  return ["topology", ctx.configId ?? "", ctx.context, ctx.namespace || "__all__"];
 }
 
 function contextsFor(ctx: ResourceContext): ResourceContext[] {
@@ -30,6 +30,7 @@ function contextsFor(ctx: ResourceContext): ResourceContext[] {
     const meta = findResourceType(kind);
     return {
       context: ctx.context,
+      configId: ctx.configId,
       group: meta?.group ?? "",
       version: meta?.version ?? "v1",
       kind,

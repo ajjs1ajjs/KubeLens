@@ -34,18 +34,20 @@ export function ResourcePage() {
   const [editObject, setEditObject] = useState<K8sObject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<K8sObject | null>(null);
   const contextName = activeCluster?.name;
+  const configId = activeCluster?.configId;
 
   const ctx = useMemo<ResourceContext | null>(() => {
     if (!contextName || !meta) return null;
     return {
       context: contextName,
+      configId,
       group: meta.group ?? "",
       version: meta.version,
       kind: meta.kind,
       namespaced: meta.namespaced,
       namespace: meta.namespaced ? activeNamespace : "",
     };
-  }, [contextName, meta, activeNamespace]);
+  }, [contextName, configId, meta, activeNamespace]);
 
   const { data, isPending, isError, error, watch } = useResourceList(ctx);
   const objects = data ?? [];

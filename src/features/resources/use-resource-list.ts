@@ -7,7 +7,15 @@ import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
 export type WatchStatus = "idle" | "starting" | "watching" | "error";
 
 export function resourceQueryKey(ctx: ResourceContext): string[] {
-  return ["resources", ctx.context, ctx.group, ctx.version, ctx.kind, ctx.namespace || "__all__"];
+  return [
+    "resources",
+    ctx.configId ?? "",
+    ctx.context,
+    ctx.group,
+    ctx.version,
+    ctx.kind,
+    ctx.namespace || "__all__",
+  ];
 }
 
 /**
@@ -20,6 +28,7 @@ export function useResourceList(ctx: ResourceContext | null) {
   const [watchError, setWatchError] = useState<string | null>(null);
 
   const context = ctx?.context;
+  const configId = ctx?.configId;
   const group = ctx?.group;
   const version = ctx?.version;
   const kind = ctx?.kind;
@@ -38,6 +47,7 @@ export function useResourceList(ctx: ResourceContext | null) {
     if (!active) return;
     const c: ResourceContext = {
       context: context ?? "",
+      configId,
       group: group ?? "",
       version: version ?? "",
       kind: kind ?? "",
@@ -128,7 +138,7 @@ export function useResourceList(ctx: ResourceContext | null) {
       unlisten?.();
       if (watchId) void k8sApi.stopWatch(watchId);
     };
-  }, [active, context, group, version, kind, namespaced, namespace, queryClient]);
+  }, [active, context, configId, group, version, kind, namespaced, namespace, queryClient]);
 
   const watch: WatchStatus = !active
     ? "idle"

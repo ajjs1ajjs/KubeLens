@@ -52,17 +52,19 @@ export function useAutoSelectCluster() {
 /** Connects the active cluster and records the result in the store. */
 export function useActiveClusterConnect() {
   const active = useActiveCluster();
+  const id = active?.id;
   const name = active?.name;
+  const configId = active?.configId;
   const connected = active?.connected;
 
   useEffect(() => {
-    if (!name || connected) return;
+    if (!id || !name || connected) return;
     let disposed = false;
     k8sApi
-      .connectCluster(name)
+      .connectCluster(name, configId)
       .then((summary) => {
         if (disposed) return;
-        useClusterStore.getState().setClusterState(name, {
+        useClusterStore.getState().setClusterState(id, {
           connected: true,
           version: summary.version ?? undefined,
           error: undefined,
@@ -70,14 +72,32 @@ export function useActiveClusterConnect() {
       })
       .catch((error) => {
         if (disposed) return;
-        useClusterStore
-          .getState()
-          .setClusterState(name, { connected: false, error: String(error) });
+        useClusterStore.getState().setClusterState(id, { connected: false, error: String(error) });
       });
     return () => {
       disposed = true;
     };
-  }, [name, connected]);
+  }, [id, name, configId, connected]);
+}
+
+/** Explicitly connects a cluster (by unique id + context/config). */
+export async function connectCluster(id: string, name: string, configId?: string) {
+  const summary = await k8sApi.connectCluster(name, configId);
+  useClusterStore.getState().setClusterState(id, {
+    connected: true,
+    version: summary.version ?? undefined,
+    error: undefined,
+  });
+}
+
+/** Explicitly disconnects a cluster. */
+export async function disconnectCluster(id: string, name: string, configId?: string) {
+  await k8sApi.disconnectCluster(name, configId);
+  useClusterStore.getState().setClusterState(id, {
+    connected: false,
+    version: undefined,
+    error: undefined,
+  });
 }
 
 /** Namespaces available on a cluster, for the header selector. */

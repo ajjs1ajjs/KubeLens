@@ -128,7 +128,7 @@ describe("cluster-store", () => {
         name: "Alpha",
         path: "/a",
         active: false,
-        contexts: [summary("alpha-ctx", true)],
+        contexts: [summary("alpha-ctx", false)],
       },
       {
         id: "cfg-b",
@@ -141,8 +141,14 @@ describe("cluster-store", () => {
 
     const { configs, clusters, activeClusterId } = useClusterStore.getState();
     expect(configs).toHaveLength(2);
-    expect(clusters).toHaveLength(2);
-    expect(clusters.map((c) => c.id)).toEqual(["beta-ctx", "beta-ctx2"]);
-    expect(activeClusterId).toBe("beta-ctx");
+    expect(clusters).toHaveLength(3);
+    expect(clusters.map((c) => c.id)).toEqual([
+      "cfg-a::alpha-ctx",
+      "cfg-b::beta-ctx",
+      "cfg-b::beta-ctx2",
+    ]);
+    expect(clusters[0].configId).toBe("cfg-a");
+    expect(clusters[1].configId).toBe("cfg-b");
+    expect(activeClusterId).toBe("cfg-b::beta-ctx");
   });
 });

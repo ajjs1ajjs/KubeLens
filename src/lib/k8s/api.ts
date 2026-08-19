@@ -27,7 +27,14 @@ export const EXEC_EVENT = "kubelens://exec-output";
 export const k8sApi = {
   listClusters: () => invoke<ClusterSummary[]>("list_clusters"),
 
-  connectCluster: (context: string) => invoke<ClusterSummary>("connect_cluster", { context }),
+  connectCluster: (context: string, configId?: string | null) =>
+    invoke<ClusterSummary>("connect_cluster", {
+      context,
+      configId: configId ?? null,
+    }),
+
+  disconnectCluster: (context: string, configId?: string | null) =>
+    invoke<void>("disconnect_cluster", { context, configId: configId ?? null }),
 
   reloadKubeconfig: () => invoke<ClusterSummary[]>("reload_kubeconfig"),
 

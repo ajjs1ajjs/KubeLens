@@ -86,6 +86,7 @@ export function TopologyPage() {
     if (!activeCluster) return null;
     return {
       context: activeCluster.name,
+      configId: activeCluster.configId,
       group: "",
       version: "v1",
       kind: "Pod",

@@ -44,7 +44,10 @@
         "title": "Metrics",
         "description": "CPU and memory usage for nodes and pods in real time."
       },
-      "helm": { "title": "Helm", "description": "Browse and manage Helm releases." },
+      "helm": {
+        "title": "Helm",
+        "description": "Browse and manage Helm releases."
+      },
       "topology": {
         "title": "Topology",
         "description": "Visual dependency graph between your workloads."
@@ -86,7 +89,10 @@
     "collapse": "Collapse config",
     "expand": "Expand config",
     "rename": "Rename {{name}}",
-    "remove": "Remove {{name}}"
+    "remove": "Remove {{name}}",
+    "setActive": "Set as active",
+    "connect": "Connect",
+    "disconnect": "Disconnect"
   },
   "resources": {
     "page": {

@@ -24,6 +24,8 @@ export interface ClusterConfig {
 /** Identifies a resource set to query on the backend. */
 export interface ResourceContext {
   context: string;
+  /** Id of the cluster config this context belongs to (empty = active config). */
+  configId?: string;
   group: string;
   version: string;
   kind: string;

@@ -6,6 +6,8 @@ import {
   ChevronDown,
   ChevronRight,
   GitBranch,
+  Link,
+  Unlink,
   Network,
   Pencil,
   Plus,
@@ -29,27 +31,89 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RESOURCE_GROUPS } from "@/features/resources/resource-types";
 import { useClusterStore } from "@/features/clusters/cluster-store";
+import { connectCluster, disconnectCluster } from "@/features/clusters/use-clusters";
 import { k8sApi } from "@/lib/k8s/api";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ClusterConfig } from "@/lib/k8s/types";
 
 function ConfigContextRow({
-  name,
+  cluster,
   active,
   onSelect,
 }: {
-  name: string;
+  cluster: { name: string; configId?: string; connected: boolean };
   active: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+
+  const uniqueId = `${cluster.configId ?? ""}::${cluster.name}`;
+
+  const handleConnect = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await connectCluster(uniqueId, cluster.name, cluster.configId);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await disconnectCluster(uniqueId, cluster.name, cluster.configId);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton isActive={active} onClick={onSelect}>
-        <Server className="size-4" />
-        <span className="truncate">{name}</span>
-      </SidebarMenuButton>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton
+            isActive={active}
+            onClick={onSelect}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              (e.currentTarget as HTMLElement).click();
+            }}
+          >
+            <Server className="size-4" />
+            <span className="truncate">{cluster.name}</span>
+            <span
+              className={`ml-auto size-2 shrink-0 rounded-full ${cluster.connected ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+            />
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="right">
+          <DropdownMenuItem onClick={onSelect}>{t("sidebar.setActive")}</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {cluster.connected ? (
+            <DropdownMenuItem onClick={() => void handleDisconnect()}>
+              <Unlink className="mr-2 size-4" />
+              {t("sidebar.disconnect")}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => void handleConnect()}>
+              <Link className="mr-2 size-4" />
+              {t("sidebar.connect")}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </SidebarMenuItem>
   );
 }
@@ -155,20 +219,28 @@ function ConfigRow({
       {expanded && (
         <div className="ml-3 border-l pl-1">
           <SidebarMenu>
-            {config.contexts.map((ctx) => (
-              <ConfigContextRow
-                key={ctx.name}
-                name={ctx.name}
-                active={ctx.name === activeContext}
-                onSelect={() => {
-                  // Select the context AND ensure its config is the active one
-                  // so the backend serves resources from this cluster.
-                  void onActivate();
-                  useClusterStore.getState().setActiveCluster(ctx.name);
-                  useClusterStore.getState().setActiveNamespace("");
-                }}
-              />
-            ))}
+            {config.contexts.map((ctx) => {
+              const clusterId = `${config.id}::${ctx.name}`;
+              const clusterState = useClusterStore
+                .getState()
+                .clusters.find((c) => c.id === clusterId);
+              return (
+                <ConfigContextRow
+                  key={ctx.name}
+                  cluster={{
+                    name: ctx.name,
+                    configId: config.id,
+                    connected: clusterState?.connected ?? false,
+                  }}
+                  active={clusterId === activeContext}
+                  onSelect={() => {
+                    void onActivate();
+                    useClusterStore.getState().setActiveCluster(clusterId);
+                    useClusterStore.getState().setActiveNamespace("");
+                  }}
+                />
+              );
+            })}
           </SidebarMenu>
         </div>
       )}

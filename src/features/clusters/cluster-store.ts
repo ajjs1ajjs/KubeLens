@@ -2,8 +2,11 @@ import { create } from "zustand";
 import type { ClusterConfig, ClusterSummary } from "@/lib/k8s/types";
 
 export interface ClusterInfo {
+  /** Unique id across configs: `configId::context`. */
   id: string;
   name: string;
+  /** Id of the config this cluster belongs to. */
+  configId?: string;
   /** API server URL, e.g. https://127.0.0.1:6443 */
   server: string;
   /** Namespace configured on the kubeconfig context, if any. */
@@ -87,24 +90,26 @@ export const useClusterStore = create<ClusterState>((set) => ({
     }),
   setConfigs: (configs) =>
     set((state) => {
-      // Keep live connected state for contexts that already exist.
+      // Track connected state across all configs' contexts using a unique
+      // `configId::context` id so same-named contexts don't collide.
       const previous = new Map(state.clusters.map((c) => [c.id, c]));
-      const activeConfig = configs.find((c) => c.active);
-      // Show only the active config's contexts, matching the backend.
-      const activeContexts = activeConfig ? activeConfig.contexts : [];
-      const clusters: ClusterInfo[] = activeContexts.map((s) => {
-        const prev = previous.get(s.name);
-        return {
-          id: s.name,
-          name: s.name,
-          server: s.server,
-          namespace: s.namespace,
-          current: s.current,
-          connected: prev?.connected ?? false,
-          version: prev?.version ?? s.version,
-          error: prev?.error,
-        };
-      });
+      const clusters: ClusterInfo[] = configs.flatMap((cfg) =>
+        cfg.contexts.map((s) => {
+          const id = `${cfg.id}::${s.name}`;
+          const prev = previous.get(id);
+          return {
+            id,
+            name: s.name,
+            configId: cfg.id,
+            server: s.server,
+            namespace: s.namespace,
+            current: s.current,
+            connected: prev?.connected ?? false,
+            version: prev?.version ?? s.version,
+            error: prev?.error,
+          };
+        }),
+      );
       const activeStillExists = clusters.some((c) => c.id === state.activeClusterId);
       return {
         configs,
