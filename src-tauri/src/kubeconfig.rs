@@ -64,7 +64,53 @@ pub fn load_kubeconfig_from(path: &Path) -> Result<Kubeconfig, String> {
             path.display()
         ));
     }
-    Kubeconfig::read_from(path).map_err(|e| format!("Failed to parse {}: {e}", path.display()))
+    let config = Kubeconfig::read_from(path)
+        .map_err(|e| format!("Failed to parse {}: {e}", path.display()))?;
+    Ok(normalize_kubeconfig(config))
+}
+
+/// Normalizes a parsed kubeconfig so that common malformed layouts still work.
+///
+/// Some tools export kubeconfig files with an empty `contexts` list but a
+/// non-empty `current-context`. Without a context entry the app cannot list or
+/// connect to anything. When `contexts` is empty we synthesize one from the
+/// `current-context` name, matching the conventional `user@cluster` form (or
+/// falling back to the first available cluster/user).
+fn normalize_kubeconfig(mut config: Kubeconfig) -> Kubeconfig {
+    if !config.contexts.is_empty() || config.current_context.is_none() {
+        return config;
+    }
+    let name = config.current_context.clone().unwrap_or_default();
+    if name.is_empty() {
+        return config;
+    }
+
+    // Resolve cluster/user names: prefer the `user@cluster` split of the
+    // current-context name, then fall back to the first declared entries.
+    let (user_part, cluster_part) = match name.split_once('@') {
+        Some((u, c)) => (Some(u.to_string()), Some(c.to_string())),
+        None => (None, None),
+    };
+
+    let cluster = cluster_part.or_else(|| config.clusters.first().map(|c| c.name.clone()));
+    let user = user_part.or_else(|| config.auth_infos.first().map(|u| u.name.clone()));
+
+    let cluster = match cluster {
+        Some(c) if config.clusters.iter().any(|x| x.name == c) => c,
+        _ => return config,
+    };
+
+    let context = kube::config::Context {
+        cluster,
+        user,
+        ..Default::default()
+    };
+    config.contexts.push(kube::config::NamedContext {
+        name,
+        context: Some(context),
+        other: Default::default(),
+    });
+    config
 }
 
 /// Filename used to persist the user-chosen kubeconfig path.
@@ -158,7 +204,7 @@ pub fn load_kubeconfig_with(env: Option<&str>, home: Option<&Path>) -> Result<Ku
         return Err(format!("No kubeconfig file exists at: {joined}"));
     }
 
-    Ok(merge_kubeconfigs(configs))
+    Ok(normalize_kubeconfig(merge_kubeconfigs(configs)))
 }
 
 /// Merges kubeconfig files into a single config.
@@ -413,6 +459,45 @@ current-context: ctx-a
         let config = load_kubeconfig_with(Some(a.to_str().unwrap()), None).unwrap();
         assert_eq!(config.contexts.len(), 1);
         assert_eq!(config.current_context.as_deref(), Some("ctx-a"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn synthesizes_context_when_contexts_list_is_empty() {
+        let dir = temp_dir();
+        let a = write_config(
+            &dir,
+            "config.yaml",
+            r#"
+apiVersion: v1
+kind: Config
+clusters:
+- name: kubernetes
+  cluster:
+    server: https://172.16.50.2:6443
+users:
+- name: kubernetes-admin
+  user:
+    token: token
+contexts: []
+current-context: kubernetes-admin@kubernetes
+"#,
+        );
+
+        let config = load_kubeconfig_from(&a).unwrap();
+        assert_eq!(config.contexts.len(), 1);
+        let ctx = &config.contexts[0];
+        assert_eq!(ctx.name, "kubernetes-admin@kubernetes");
+        let c = ctx.context.as_ref().unwrap();
+        assert_eq!(c.cluster, "kubernetes");
+        assert_eq!(c.user.as_deref(), Some("kubernetes-admin"));
+
+        // And contexts_for produces a usable cluster summary.
+        let summaries = crate::k8s::cluster_manager::contexts_for(&config);
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].name, "kubernetes-admin@kubernetes");
+        assert_eq!(summaries[0].server, "https://172.16.50.2:6443");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
