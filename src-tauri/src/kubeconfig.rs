@@ -95,9 +95,14 @@ fn normalize_kubeconfig(mut config: Kubeconfig) -> Kubeconfig {
     let cluster = cluster_part.or_else(|| config.clusters.first().map(|c| c.name.clone()));
     let user = user_part.or_else(|| config.auth_infos.first().map(|u| u.name.clone()));
 
-    let cluster = match cluster {
-        Some(c) if config.clusters.iter().any(|x| x.name == c) => c,
-        _ => return config,
+    let cluster = cluster
+        .filter(|c| config.clusters.iter().any(|x| x.name == *c))
+        .or_else(|| config.clusters.first().map(|c| c.name.clone()));
+
+    let user = user.filter(|u| config.auth_infos.iter().any(|x| x.name == *u));
+
+    let Some(cluster) = cluster else {
+        return config;
     };
 
     let context = kube::config::Context {
@@ -497,6 +502,44 @@ current-context: kubernetes-admin@kubernetes
         let summaries = crate::k8s::cluster_manager::contexts_for(&config);
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].name, "kubernetes-admin@kubernetes");
+        assert_eq!(summaries[0].server, "https://172.16.50.2:6443");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn synthesizes_context_when_cluster_name_mismatches() {
+        let dir = temp_dir();
+        let a = write_config(
+            &dir,
+            "config.yaml",
+            r#"
+apiVersion: v1
+kind: Config
+clusters:
+- name: my-cluster
+  cluster:
+    server: https://172.16.50.2:6443
+users:
+- name: kubernetes-admin
+  user:
+    token: token
+contexts: []
+current-context: kubernetes-admin@kubernetes
+"#,
+        );
+
+        let config = load_kubeconfig_from(&a).unwrap();
+        // Should synthesize a context using the first available cluster/user
+        assert_eq!(config.contexts.len(), 1);
+        let ctx = &config.contexts[0];
+        assert_eq!(ctx.name, "kubernetes-admin@kubernetes");
+        let c = ctx.context.as_ref().unwrap();
+        assert_eq!(c.cluster, "my-cluster"); // falls back to first cluster
+        assert_eq!(c.user.as_deref(), Some("kubernetes-admin")); // user matches
+
+        let summaries = crate::k8s::cluster_manager::contexts_for(&config);
+        assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].server, "https://172.16.50.2:6443");
 
         let _ = std::fs::remove_dir_all(&dir);
