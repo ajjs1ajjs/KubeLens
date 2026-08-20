@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTheme } from "next-themes";
-import { FolderOpen, Monitor, Moon, RefreshCw, Sun } from "lucide-react";
+import { Check, FolderOpen, Monitor, Moon, Pencil, RefreshCw, Sun, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -40,6 +41,9 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [picking, setPicking] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
+  const [editingConfigName, setEditingConfigName] = useState("");
+  const [savingConfig, setSavingConfig] = useState(false);
   const configs = useClusterStore((s) => s.configs);
   const clusters = useClusterStore((s) => s.clusters);
   const queryClient = useQueryClient();
@@ -78,6 +82,40 @@ export function SettingsPage() {
     } finally {
       setPicking(false);
     }
+  };
+
+  const startRename = (id: string, name: string) => {
+    setEditingConfigId(id);
+    setEditingConfigName(name);
+  };
+
+  const cancelRename = () => {
+    setEditingConfigId(null);
+    setEditingConfigName("");
+  };
+
+  const saveRename = async () => {
+    if (!editingConfigId || savingConfig) return;
+    const current = configs.find((config) => config.id === editingConfigId);
+    const trimmed = editingConfigName.trim();
+    if (!current || !trimmed || trimmed === current.name) {
+      cancelRename();
+      return;
+    }
+
+    setSavingConfig(true);
+    try {
+      await k8sApi.renameClusterConfig(editingConfigId, trimmed);
+      await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+      cancelRename();
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const removeConfig = async (id: string) => {
+    await k8sApi.removeClusterConfig(id);
+    await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
   };
 
   return (
@@ -145,13 +183,71 @@ export function SettingsPage() {
                 <ul className="mt-1 flex flex-col gap-1">
                   {configs.map((config) => (
                     <li key={config.id} className="flex items-center gap-2">
-                      <span
-                        className={`size-1.5 rounded-full ${config.active ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
-                      />
-                      <span className="min-w-0 truncate text-xs font-medium">{config.name}</span>
-                      <code className="text-muted-foreground ml-auto truncate text-[11px]">
-                        {config.path}
-                      </code>
+                      {editingConfigId === config.id ? (
+                        <>
+                          <Input
+                            value={editingConfigName}
+                            onChange={(event) => setEditingConfigName(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") void saveRename();
+                              if (event.key === "Escape") cancelRename();
+                            }}
+                            className="h-7 min-w-0 flex-1 text-xs"
+                            autoFocus
+                            aria-label={t("sidebar.rename", { name: config.name })}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-6"
+                            onClick={() => void saveRename()}
+                            disabled={savingConfig}
+                            aria-label={t("common.save")}
+                          >
+                            <Check className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-6"
+                            onClick={cancelRename}
+                            disabled={savingConfig}
+                            aria-label={t("common.cancel")}
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <span
+                            className={`size-1.5 rounded-full ${config.active ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+                          />
+                          <span className="min-w-0 truncate text-xs font-medium">
+                            {config.name}
+                          </span>
+                          <code className="text-muted-foreground ml-auto truncate text-[11px]">
+                            {config.path}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground size-6"
+                            onClick={() => startRename(config.id, config.name)}
+                            aria-label={t("sidebar.rename", { name: config.name })}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive size-6"
+                            onClick={() => void removeConfig(config.id)}
+                            aria-label={t("sidebar.remove", { name: config.name })}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>

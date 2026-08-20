@@ -33,8 +33,8 @@ pub async fn pod_logs(
     container: Option<String>,
     tail_lines: Option<i64>,
 ) -> Result<String, String> {
-let client = manager.client_ctx(&ctx).await?;
-        let api = pod_api(&client, ctx);
+    let client = manager.client_ctx(ctx).await?;
+    let api = pod_api(&client, ctx);
     let params = LogParams {
         container,
         tail_lines,

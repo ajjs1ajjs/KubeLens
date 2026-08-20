@@ -12,10 +12,14 @@ export function useClusters() {
   });
 
   const syncClusters = useClusterStore((s) => s.syncClusters);
+  const hasConfigs = useClusterStore((s) => s.configs.length > 0);
 
   useEffect(() => {
-    if (query.data) syncClusters(query.data);
-  }, [query.data, syncClusters]);
+    // When managed configs exist, setConfigs owns the cluster list (ids are
+    // `configId::context`). syncClusters would clobber it with active-config
+    // only contexts and bare ids, so it applies to the default kubeconfig only.
+    if (query.data && !hasConfigs) syncClusters(query.data);
+  }, [query.data, syncClusters, hasConfigs]);
 
   return query;
 }

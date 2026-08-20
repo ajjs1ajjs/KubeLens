@@ -80,6 +80,7 @@
     "brandSub": "Kubernetes IDE",
     "clusters": "Кластери",
     "noConfigs": "Немає конфігів",
+    "noClusters": "Кластерів не знайдено",
     "tools": "Інструменти",
     "helm": "Helm-релізи",
     "topology": "Топологія",
@@ -92,7 +93,13 @@
     "remove": "Видалити {{name}}",
     "setActive": "Зробити активним",
     "connect": "Підключити",
-    "disconnect": "Відключити"
+    "disconnect": "Відключити",
+    "clusterActions": "Дії для {{name}}",
+    "switchTo": "Перемкнутися на кластер",
+    "active": "Активний",
+    "connected": "Підключений",
+    "offline": "Офлайн",
+    "connecting": "Підключення…"
   },
   "resources": {
     "page": {

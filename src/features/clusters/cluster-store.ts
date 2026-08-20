@@ -90,6 +90,11 @@ export const useClusterStore = create<ClusterState>((set) => ({
     }),
   setConfigs: (configs) =>
     set((state) => {
+      if (configs.length === 0) {
+        // No managed configs: the cluster list comes from the default
+        // kubeconfig via syncClusters, so keep it instead of wiping it.
+        return { configs };
+      }
       // Track connected state across all configs' contexts using a unique
       // `configId::context` id so same-named contexts don't collide.
       const previous = new Map(state.clusters.map((c) => [c.id, c]));

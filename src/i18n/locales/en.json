@@ -80,6 +80,7 @@
     "brandSub": "Kubernetes IDE",
     "clusters": "Clusters",
     "noConfigs": "No configs",
+    "noClusters": "No clusters found",
     "tools": "Tools",
     "helm": "Helm Releases",
     "topology": "Topology",
@@ -92,7 +93,13 @@
     "remove": "Remove {{name}}",
     "setActive": "Set as active",
     "connect": "Connect",
-    "disconnect": "Disconnect"
+    "disconnect": "Disconnect",
+    "clusterActions": "Actions for {{name}}",
+    "switchTo": "Switch to cluster",
+    "active": "Active",
+    "connected": "Connected",
+    "offline": "Offline",
+    "connecting": "Connecting…"
   },
   "resources": {
     "page": {

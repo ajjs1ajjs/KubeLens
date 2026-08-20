@@ -112,6 +112,28 @@ describe("cluster-store", () => {
     expect(useClusterStore.getState().activeNamespace).toBe("");
   });
 
+  it("keeps the default-kubeconfig clusters when configs become empty", () => {
+    useClusterStore.getState().syncClusters([
+      {
+        name: "dev",
+        server: "https://dev",
+        namespace: null,
+        current: true,
+        connected: true,
+        version: null,
+        error: null,
+      },
+    ]);
+
+    useClusterStore.getState().setConfigs([]);
+
+    const { clusters, configs, activeClusterId } = useClusterStore.getState();
+    expect(configs).toHaveLength(0);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].id).toBe("dev");
+    expect(activeClusterId).toBe("dev");
+  });
+
   it("loads configs and shows only the active config's contexts", () => {
     const summary = (name: string, current: boolean) => ({
       name,

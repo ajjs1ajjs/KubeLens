@@ -181,7 +181,10 @@ impl ClusterManager {
 
     /// Returns a client for the context described by a `ResourceContext`,
     /// resolving the owning config when `config_id` is set.
-    pub async fn client_ctx(&self, ctx: &crate::k8s::models::ResourceContext) -> Result<Client, String> {
+    pub async fn client_ctx(
+        &self,
+        ctx: &crate::k8s::models::ResourceContext,
+    ) -> Result<Client, String> {
         let config_id = (!ctx.config_id.is_empty()).then_some(ctx.config_id.as_str());
         self.client_for(config_id, &ctx.context).await
     }
