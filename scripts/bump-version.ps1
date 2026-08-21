@@ -16,8 +16,11 @@ if (-not $Version -match '^\d+\.\d+\.\d+$') {
 
 function Set-VersionLine([string]$Path, [string]$Pattern) {
     $content = Get-Content $Path -Raw
-    $content = [regex]::Replace($content, $Pattern, "`${1}`"$Version`"`${2}", 'Multiline')
-    Set-Content -Path $Path -Value $content -NoNewline
+    $newContent = [regex]::Replace($content, $Pattern, "`${1}`"$Version`"`${2}", 'Multiline')
+    if ($newContent -eq $content) {
+        throw "Failed to bump version in $Path — pattern did not match. File may have unexpected formatting."
+    }
+    Set-Content -Path $Path -Value $newContent -NoNewline
 }
 
 # --- Cargo.toml: version = "0.1.0" ---
@@ -28,6 +31,17 @@ Set-VersionLine (Join-Path $root "src-tauri\tauri.conf.json") '^(\s*"version"\s*
 
 # --- package.json: "version": "0.1.0" ---
 Set-VersionLine (Join-Path $root "package.json") '^(\s*"version"\s*:\s*)"[^"]*"(\s*,?\s*)$'
+
+# --- verify all three manifests are in sync ---
+$pkgVer = (Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json).version
+$tauriVer = (Get-Content (Join-Path $root "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json).version
+$cargoRaw = Get-Content (Join-Path $root "src-tauri\Cargo.toml") -Raw
+if ($cargoRaw -notmatch '(?m)^version\s*=\s*"([^"]+)"') { throw "Could not parse Cargo.toml version" }
+$cargoVer = $Matches[1]
+foreach ($v in @($pkgVer, $tauriVer, $cargoVer)) {
+    if ($v -ne $Version) { throw "Version mismatch after bump: expected $Version but got pkg=$pkgVer tauri=$tauriVer cargo=$cargoVer" }
+}
+Write-Host "Verified versions in sync: $Version"
 
 # --- tag ---
 $tag = "v$Version"

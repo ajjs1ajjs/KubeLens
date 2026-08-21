@@ -41,6 +41,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify version sync (tag vs manifests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          VER="${TAG#v}"
+          PKG=$(node -p "require('./package.json').version")
+          TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)"/\1/')
+          echo "Tag: $TAG  expected version: $VER"
+          echo "package.json: $PKG"
+          echo "tauri.conf.json: $TAURI"
+          echo "Cargo.toml: $CARGO"
+          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" ]]; then
+            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO"
+            echo "Fix with: ./scripts/bump-version.ps1 $VER  (or ensure all three files match the tag)"
+            exit 1
+          fi
+          if [[ "$PKG" != "$TAURI" || "$PKG" != "$CARGO" ]]; then
+            echo "::error::Manifest versions out of sync: pkg=$PKG tauri=$TAURI cargo=$CARGO"
+            exit 1
+          fi
+          echo "Version check passed: $VER"
+
       - name: Build and upload release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -52,6 +76,6 @@ jobs:
           releaseName: "KubeLens ${{ github.ref_name }}"
           releaseBody: |
             See the [changelog](https://github.com/ajjs1ajjs/KubeLens/releases) for details.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

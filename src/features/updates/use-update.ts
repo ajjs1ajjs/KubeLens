@@ -24,9 +24,14 @@ export function useUpdate(): UseUpdateResult {
   const [error, setError] = useState<string | null>(null);
   const updateRef = useRef<Update | null>(null);
   const checkedOnce = useRef(false);
+  const statusRef = useRef<UpdateStatus>("idle");
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   const checkForUpdates = useCallback(async () => {
-    if (status === "checking" || status === "downloading") return;
+    if (statusRef.current === "checking" || statusRef.current === "downloading") return;
     setStatus("checking");
     setError(null);
     try {
@@ -42,13 +47,15 @@ export function useUpdate(): UseUpdateResult {
       setError(String(err));
       setStatus("error");
     }
-  }, [status]);
+  }, []);
 
   useEffect(() => {
     if (checkedOnce.current) return;
     checkedOnce.current = true;
     void checkForUpdates();
-  }, [checkForUpdates]);
+    // stable checkForUpdates — run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const installUpdate = useCallback(async () => {
     const update = updateRef.current;
