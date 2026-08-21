@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   bump:
-    if: "!contains(github.event.head_commit.message, 'chore: release') && !contains(github.event.head_commit.message, 'ci:')"
+    if: ${{ !contains(github.event.head_commit.message, 'chore: release') && !contains(github.event.head_commit.message, 'ci:') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,16 +25,12 @@ jobs:
           # Fallback to GITHUB_TOKEN keeps checkout working even if RELEASE_TOKEN is not configured (bump will be skipped below).
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Check RELEASE_TOKEN
+      - name: Bump patch version and tag
         run: |
           if [ -z "${{ secrets.RELEASE_TOKEN }}" ]; then
-            echo "::warning::RELEASE_TOKEN not set — auto-release will be skipped. Create a PAT named RELEASE_TOKEN to enable automatic patch releases."
+            echo "::warning::RELEASE_TOKEN not set — skipping auto-release bump. Set PAT to enable."
             exit 0
           fi
-
-      - name: Bump patch version and tag
-        if: ${{ secrets.RELEASE_TOKEN != '' }}
-        run: |
           set -euo pipefail
           CURRENT=$(node -p "require('./package.json').version")
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
