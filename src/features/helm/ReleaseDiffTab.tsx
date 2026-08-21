@@ -14,6 +14,7 @@ import { useHelmReleaseRevision, useHelmRevisions } from "./use-helm";
 interface ReleaseDiffTabProps {
   context: string;
   name: string;
+  configId?: string;
 }
 
 function DiffView({ lines }: { lines: DiffLine[] }) {
@@ -48,14 +49,14 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
 }
 
 /** Compares two revisions of a release (values + manifest). */
-export function ReleaseDiffTab({ context, name }: ReleaseDiffTabProps) {
+export function ReleaseDiffTab({ context, name, configId }: ReleaseDiffTabProps) {
   const { t } = useTranslation();
-  const { data: revisions } = useHelmRevisions(context, name);
+  const { data: revisions } = useHelmRevisions(context, name, configId);
   const [base, setBase] = useState<number | null>(null);
   const [next, setNext] = useState<number | null>(null);
 
-  const baseDetail = useHelmReleaseRevision(context, name, base);
-  const nextDetail = useHelmReleaseRevision(context, name, next);
+  const baseDetail = useHelmReleaseRevision(context, name, base, configId);
+  const nextDetail = useHelmReleaseRevision(context, name, next, configId);
 
   const versions = revisions?.map((r) => r.version) ?? [];
   const canDiff = base !== null && next !== null && base !== next;

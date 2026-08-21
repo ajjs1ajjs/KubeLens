@@ -20,7 +20,10 @@ export function AppHeader() {
   const activeNamespace = useClusterStore((s) => s.activeNamespace);
   const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
 
-  const namespacesQuery = useNamespaces(activeCluster?.connected ? activeCluster.name : null);
+  const namespacesQuery = useNamespaces(
+    activeCluster?.connected ? activeCluster.name : null,
+    activeCluster?.configId,
+  );
   const namespaces = namespacesQuery.data ?? [];
   const connected = activeCluster?.connected ?? false;
   const isDark = resolvedTheme === "dark";

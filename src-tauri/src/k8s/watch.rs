@@ -169,7 +169,7 @@ mod tests {
         let server = mock_api::MockApiServer::start().await;
         let manager = manager_with_mock(&server).await;
         let ctx = pod_ctx();
-        let client = manager.client(CTX).await.expect("client");
+        let client = manager.client_for(None, CTX).await.expect("client");
         let api = crate::k8s::resources::api(&client, &ctx);
 
         let (tx, mut rx) = mpsc::unbounded::<crate::k8s::models::WatchEvent>();

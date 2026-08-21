@@ -67,10 +67,11 @@ pub fn stop_watch(watch: State<'_, WatchManager>, id: String) -> Result<(), Stri
 pub async fn list_namespaces(
     manager: State<'_, ClusterManager>,
     context: String,
+    config_id: Option<String>,
 ) -> Result<Vec<String>, String> {
     let ctx = ResourceContext {
         context,
-        config_id: String::new(),
+        config_id: config_id.unwrap_or_default(),
         group: String::new(),
         version: "v1".into(),
         kind: "Namespace".into(),

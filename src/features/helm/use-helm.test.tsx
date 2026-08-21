@@ -66,7 +66,10 @@ describe("useHelmReleases", () => {
 
     const { result } = renderHook(() => useHelmReleases("ctx-a"), { wrapper });
     await waitFor(() => expect(result.current.data).toHaveLength(1));
-    expect(invokeMock).toHaveBeenCalledWith("list_helm_releases", { context: "ctx-a" });
+    expect(invokeMock).toHaveBeenCalledWith("list_helm_releases", {
+      context: "ctx-a",
+      configId: null,
+    });
   });
 });
 
@@ -79,7 +82,11 @@ describe("useHelmRelease", () => {
 
     const { result } = renderHook(() => useHelmRelease("ctx-a", "web"), { wrapper });
     await waitFor(() => expect(result.current.data?.notes).toBe("Release ready."));
-    expect(invokeMock).toHaveBeenCalledWith("get_helm_release", { context: "ctx-a", name: "web" });
+    expect(invokeMock).toHaveBeenCalledWith("get_helm_release", {
+      context: "ctx-a",
+      name: "web",
+      configId: null,
+    });
   });
 
   it("stays disabled without a name", async () => {
@@ -100,6 +107,7 @@ describe("useUninstallHelmRelease", () => {
       expect(invokeMock).toHaveBeenCalledWith("uninstall_helm_release", {
         context: "ctx-a",
         name: "web",
+        configId: null,
       }),
     );
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Release "web" uninstalled'));
@@ -156,6 +164,7 @@ describe("useHelmRevisions", () => {
     expect(invokeMock).toHaveBeenCalledWith("list_helm_revisions", {
       context: "ctx-a",
       name: "web",
+      configId: null,
     });
   });
 });
@@ -175,6 +184,7 @@ describe("useHelmReleaseRevision", () => {
       context: "ctx-a",
       name: "web",
       version: 1,
+      configId: null,
     });
   });
 });

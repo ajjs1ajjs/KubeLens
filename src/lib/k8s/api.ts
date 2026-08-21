@@ -66,7 +66,8 @@ export const k8sApi = {
 
   stopWatch: (id: string) => invoke<void>("stop_watch", { id }),
 
-  listNamespaces: (context: string) => invoke<string[]>("list_namespaces", { context }),
+  listNamespaces: (context: string, configId?: string | null) =>
+    invoke<string[]>("list_namespaces", { context, configId: configId ?? null }),
 
   getLogs: (ctx: ResourceContext, name: string, container?: string, tailLines?: number) =>
     invoke<string>("get_logs", {
@@ -104,20 +105,41 @@ export const k8sApi = {
 
   getNodeMetrics: (ctx: ResourceContext) => invoke<NodeMetric[]>("get_node_metrics", { ctx }),
 
-  listHelmReleases: (context: string) =>
-    invoke<HelmReleaseSummary[]>("list_helm_releases", { context }),
+  listHelmReleases: (context: string, configId?: string | null) =>
+    invoke<HelmReleaseSummary[]>("list_helm_releases", {
+      context,
+      configId: configId ?? null,
+    }),
 
-  getHelmRelease: (context: string, name: string) =>
-    invoke<HelmReleaseDetail>("get_helm_release", { context, name }),
+  getHelmRelease: (context: string, name: string, configId?: string | null) =>
+    invoke<HelmReleaseDetail>("get_helm_release", {
+      context,
+      name,
+      configId: configId ?? null,
+    }),
 
-  getHelmReleaseRevision: (context: string, name: string, version: number) =>
-    invoke<HelmReleaseDetail>("get_helm_release_revision", { context, name, version }),
+  getHelmReleaseRevision: (
+    context: string,
+    name: string,
+    version: number,
+    configId?: string | null,
+  ) =>
+    invoke<HelmReleaseDetail>("get_helm_release_revision", {
+      context,
+      name,
+      version,
+      configId: configId ?? null,
+    }),
 
-  listHelmRevisions: (context: string, name: string) =>
-    invoke<HelmReleaseRevision[]>("list_helm_revisions", { context, name }),
+  listHelmRevisions: (context: string, name: string, configId?: string | null) =>
+    invoke<HelmReleaseRevision[]>("list_helm_revisions", {
+      context,
+      name,
+      configId: configId ?? null,
+    }),
 
-  uninstallHelmRelease: (context: string, name: string) =>
-    invoke<void>("uninstall_helm_release", { context, name }),
+  uninstallHelmRelease: (context: string, name: string, configId?: string | null) =>
+    invoke<void>("uninstall_helm_release", { context, name, configId: configId ?? null }),
 };
 
 /**

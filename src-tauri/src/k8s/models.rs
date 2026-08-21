@@ -23,6 +23,7 @@ pub struct ClusterSummary {
 
 /// Identifies a Kubernetes resource (or a set of resources) to query.
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceContext {
     /// Kubeconfig context (cluster) name.
     pub context: String,

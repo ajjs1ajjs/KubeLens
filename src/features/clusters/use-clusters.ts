@@ -113,10 +113,10 @@ export async function disconnectCluster(id: string, name: string, configId?: str
 }
 
 /** Namespaces available on a cluster, for the header selector. */
-export function useNamespaces(context: string | null) {
+export function useNamespaces(context: string | null, configId?: string) {
   return useQuery({
-    queryKey: ["namespaces", context],
-    queryFn: () => k8sApi.listNamespaces(context as string),
+    queryKey: ["namespaces", context, configId],
+    queryFn: () => k8sApi.listNamespaces(context as string, configId),
     enabled: !!context,
     staleTime: 60_000,
   });

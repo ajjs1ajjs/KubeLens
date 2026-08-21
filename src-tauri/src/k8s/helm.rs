@@ -26,9 +26,10 @@ fn releases_api(client: &kube::Client) -> Api<Secret> {
 /// newest revision per release.
 pub async fn list_releases(
     manager: &ClusterManager,
+    config_id: Option<&str>,
     context: &str,
 ) -> Result<Vec<HelmReleaseSummary>, String> {
-    let client = manager.client(context).await?;
+    let client = manager.client_for(config_id, context).await?;
     let api = releases_api(&client);
     let list: ObjectList<Secret> = api
         .list(&ListParams {
@@ -60,10 +61,11 @@ pub async fn list_releases(
 /// of a release.
 pub async fn release_detail(
     manager: &ClusterManager,
+    config_id: Option<&str>,
     context: &str,
     name: &str,
 ) -> Result<HelmReleaseDetail, String> {
-    let client = manager.client(context).await?;
+    let client = manager.client_for(config_id, context).await?;
     let secrets = revision_secrets(&client, name).await?;
     let (_, secret) = secrets
         .into_iter()
@@ -83,11 +85,12 @@ pub async fn release_detail(
 /// Fetches the detail for a specific revision of a release.
 pub async fn release_detail_at(
     manager: &ClusterManager,
+    config_id: Option<&str>,
     context: &str,
     name: &str,
     version: i32,
 ) -> Result<HelmReleaseDetail, String> {
-    let client = manager.client(context).await?;
+    let client = manager.client_for(config_id, context).await?;
     let secrets = revision_secrets(&client, name).await?;
     let (_, secret) = secrets
         .into_iter()
@@ -107,10 +110,11 @@ pub async fn release_detail_at(
 /// Lists every stored revision of a release, newest first.
 pub async fn release_revisions(
     manager: &ClusterManager,
+    config_id: Option<&str>,
     context: &str,
     name: &str,
 ) -> Result<Vec<HelmReleaseRevision>, String> {
-    let client = manager.client(context).await?;
+    let client = manager.client_for(config_id, context).await?;
     let secrets = revision_secrets(&client, name).await?;
     let mut revisions = Vec::new();
     for (version, secret) in secrets {
@@ -158,10 +162,11 @@ async fn revision_secrets(client: &kube::Client, name: &str) -> Result<Vec<(i32,
 /// Deletes every revision of a release from the storage backend.
 pub async fn uninstall_release(
     manager: &ClusterManager,
+    config_id: Option<&str>,
     context: &str,
     name: &str,
 ) -> Result<(), String> {
-    let client = manager.client(context).await?;
+    let client = manager.client_for(config_id, context).await?;
     let api = releases_api(&client);
     let list: ObjectList<Secret> = api
         .list(&ListParams {
@@ -528,7 +533,9 @@ mod tests {
     async fn lists_and_inspects_releases_against_mock() {
         let server = mock_api::MockApiServer::start().await;
         let manager = manager_with_mock(&server).await;
-        let releases = super::list_releases(&manager, CTX).await.expect("list");
+        let releases = super::list_releases(&manager, None, CTX)
+            .await
+            .expect("list");
         assert!(!releases.is_empty());
         let web = releases
             .iter()
@@ -542,7 +549,7 @@ mod tests {
     async fn fetches_release_detail_against_mock() {
         let server = mock_api::MockApiServer::start().await;
         let manager = manager_with_mock(&server).await;
-        let detail = super::release_detail(&manager, CTX, "web")
+        let detail = super::release_detail(&manager, None, CTX, "web")
             .await
             .expect("detail");
         assert_eq!(detail.summary.name, "web");
@@ -555,7 +562,7 @@ mod tests {
     async fn lists_all_revisions_against_mock() {
         let server = mock_api::MockApiServer::start().await;
         let manager = manager_with_mock(&server).await;
-        let revisions = super::release_revisions(&manager, CTX, "web")
+        let revisions = super::release_revisions(&manager, None, CTX, "web")
             .await
             .expect("revisions");
         // Newest first.
@@ -569,7 +576,7 @@ mod tests {
     async fn fetches_detail_at_specific_revision_against_mock() {
         let server = mock_api::MockApiServer::start().await;
         let manager = manager_with_mock(&server).await;
-        let detail = super::release_detail_at(&manager, CTX, "web", 1)
+        let detail = super::release_detail_at(&manager, None, CTX, "web", 1)
             .await
             .expect("detail");
         assert_eq!(detail.summary.version, 1);

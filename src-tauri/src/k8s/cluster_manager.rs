@@ -173,12 +173,6 @@ impl ClusterManager {
         })
     }
 
-    /// Returns a cached `kube::Client` for a context in the active config,
-    /// building one on demand.
-    pub async fn client(&self, context: &str) -> Result<Client, String> {
-        self.client_for(None, context).await
-    }
-
     /// Returns a client for the context described by a `ResourceContext`,
     /// resolving the owning config when `config_id` is set.
     pub async fn client_ctx(

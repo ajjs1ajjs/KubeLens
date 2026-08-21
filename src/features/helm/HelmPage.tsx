@@ -38,15 +38,17 @@ function ReleaseStatus({ status }: { status: string }) {
 
 function ReleaseDetailSheet({
   context,
+  configId,
   release,
   onOpenChange,
 }: {
   context: string;
+  configId?: string;
   release: HelmReleaseSummary;
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const { data, isPending, isError, error } = useHelmRelease(context, release.name);
+  const { data, isPending, isError, error } = useHelmRelease(context, release.name, configId);
 
   return (
     <Sheet open onOpenChange={onOpenChange}>
@@ -115,9 +117,10 @@ export function HelmPage() {
   const { t } = useTranslation();
   const activeCluster = useActiveCluster();
   const context = activeCluster?.name ?? null;
-  const { data, isPending, isError, error } = useHelmReleases(context);
+  const configId = activeCluster?.configId;
+  const { data, isPending, isError, error } = useHelmReleases(context, configId);
   const releases = data ?? [];
-  const uninstall = useUninstallHelmRelease(context);
+  const uninstall = useUninstallHelmRelease(context, configId);
 
   const [selected, setSelected] = useState<HelmReleaseSummary | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HelmReleaseSummary | null>(null);
@@ -234,6 +237,7 @@ export function HelmPage() {
       {selected && (
         <ReleaseDetailSheet
           context={context ?? ""}
+          configId={configId}
           release={selected}
           onOpenChange={(open) => !open && setSelected(null)}
         />
