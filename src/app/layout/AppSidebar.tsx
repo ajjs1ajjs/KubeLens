@@ -62,9 +62,7 @@ function ClusterRow({
     setBusy(true);
     try {
       onSelect();
-      if (active) {
-        await connectCluster(cluster.id, cluster.name, cluster.configId);
-      }
+      await connectCluster(cluster.id, cluster.name, cluster.configId);
     } finally {
       setBusy(false);
     }
@@ -81,7 +79,10 @@ function ClusterRow({
   };
 
   const handleSelect = () => {
-    if (active) return;
+    if (active) {
+      if (!cluster.connected && !busy) void handleConnect();
+      return;
+    }
     onSelect();
   };
 
@@ -107,8 +108,11 @@ function ClusterRow({
         <Server className="size-4" />
         <span className="flex min-w-0 flex-1 flex-col items-start leading-tight group-data-[collapsible=icon]:hidden">
           <span className="max-w-full truncate">{cluster.name}</span>
-          <span className="text-muted-foreground max-w-full truncate text-[10px] font-normal">
-            {statusLabel}
+          <span
+            className="text-muted-foreground max-w-full truncate text-[10px] font-normal"
+            title={cluster.error}
+          >
+            {cluster.error ? cluster.error : statusLabel}
           </span>
         </span>
         {busy ? (

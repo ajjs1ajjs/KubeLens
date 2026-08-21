@@ -16,6 +16,7 @@ describe("cluster-store", () => {
       configs: [],
       activeClusterId: null,
       activeNamespace: "",
+      manualDisconnects: new Set(),
     });
   });
 
@@ -172,5 +173,27 @@ describe("cluster-store", () => {
     expect(clusters[0].configId).toBe("cfg-a");
     expect(clusters[1].configId).toBe("cfg-b");
     expect(activeClusterId).toBe("cfg-b::beta-ctx");
+  });
+
+  it("suppresses auto-reconnect for manually disconnected clusters", () => {
+    useClusterStore.getState().upsertCluster(cluster("a"));
+    expect(useClusterStore.getState().manualDisconnects.has("a")).toBe(false);
+
+    useClusterStore.getState().setManualDisconnect("a", true);
+    expect(useClusterStore.getState().manualDisconnects.has("a")).toBe(true);
+
+    useClusterStore.getState().setManualDisconnect("a", true);
+    expect(useClusterStore.getState().manualDisconnects.has("a")).toBe(true);
+  });
+
+  it("clears the manual disconnect flag when the cluster is re-selected", () => {
+    useClusterStore.getState().upsertCluster(cluster("a"));
+    useClusterStore.getState().setManualDisconnect("a", true);
+
+    useClusterStore.getState().setActiveCluster("a");
+
+    const { activeClusterId, manualDisconnects } = useClusterStore.getState();
+    expect(activeClusterId).toBe("a");
+    expect(manualDisconnects.has("a")).toBe(false);
   });
 });

@@ -60,9 +60,11 @@ export function useActiveClusterConnect() {
   const name = active?.name;
   const configId = active?.configId;
   const connected = active?.connected;
+  const manualDisconnects = useClusterStore((s) => s.manualDisconnects);
 
   useEffect(() => {
     if (!id || !name || connected) return;
+    if (manualDisconnects.has(id)) return;
     let disposed = false;
     k8sApi
       .connectCluster(name, configId)
@@ -81,22 +83,28 @@ export function useActiveClusterConnect() {
     return () => {
       disposed = true;
     };
-  }, [id, name, configId, connected]);
+  }, [id, name, configId, connected, manualDisconnects]);
 }
 
 /** Explicitly connects a cluster (by unique id + context/config). */
 export async function connectCluster(id: string, name: string, configId?: string) {
-  const summary = await k8sApi.connectCluster(name, configId);
-  useClusterStore.getState().setClusterState(id, {
-    connected: true,
-    version: summary.version ?? undefined,
-    error: undefined,
-  });
+  useClusterStore.getState().setManualDisconnect(id, false);
+  try {
+    const summary = await k8sApi.connectCluster(name, configId);
+    useClusterStore.getState().setClusterState(id, {
+      connected: true,
+      version: summary.version ?? undefined,
+      error: undefined,
+    });
+  } catch (error) {
+    useClusterStore.getState().setClusterState(id, { connected: false, error: String(error) });
+  }
 }
 
 /** Explicitly disconnects a cluster. */
 export async function disconnectCluster(id: string, name: string, configId?: string) {
   await k8sApi.disconnectCluster(name, configId);
+  useClusterStore.getState().setManualDisconnect(id, true);
   useClusterStore.getState().setClusterState(id, {
     connected: false,
     version: undefined,

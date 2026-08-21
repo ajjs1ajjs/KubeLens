@@ -26,9 +26,12 @@ interface ClusterState {
   configs: ClusterConfig[];
   /** Selected namespace; empty string means all namespaces. */
   activeNamespace: string;
+  /** Clusters the user explicitly disconnected; suppress auto-reconnect. */
+  manualDisconnects: ReadonlySet<string>;
   upsertCluster: (cluster: ClusterInfo) => void;
   removeCluster: (id: string) => void;
   setActiveCluster: (id: string | null) => void;
+  setManualDisconnect: (id: string, disconnected: boolean) => void;
   setClusterState: (
     id: string,
     patch: Partial<Pick<ClusterInfo, "connected" | "error" | "version">>,
@@ -45,6 +48,7 @@ export const useClusterStore = create<ClusterState>((set) => ({
   activeClusterId: null,
   configs: [],
   activeNamespace: "",
+  manualDisconnects: new Set<string>(),
   upsertCluster: (cluster) =>
     set((state) => {
       const exists = state.clusters.some((c) => c.id === cluster.id);
@@ -59,7 +63,21 @@ export const useClusterStore = create<ClusterState>((set) => ({
       clusters: state.clusters.filter((c) => c.id !== id),
       activeClusterId: state.activeClusterId === id ? null : state.activeClusterId,
     })),
-  setActiveCluster: (id) => set({ activeClusterId: id }),
+  setActiveCluster: (id) =>
+    set((state) => {
+      if (!id || !state.manualDisconnects.has(id)) return { activeClusterId: id };
+      const manualDisconnects = new Set(state.manualDisconnects);
+      manualDisconnects.delete(id);
+      return { activeClusterId: id, manualDisconnects };
+    }),
+  setManualDisconnect: (id, disconnected) =>
+    set((state) => {
+      if (state.manualDisconnects.has(id) === disconnected) return {};
+      const manualDisconnects = new Set(state.manualDisconnects);
+      if (disconnected) manualDisconnects.add(id);
+      else manualDisconnects.delete(id);
+      return { manualDisconnects };
+    }),
   setClusterState: (id, patch) =>
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, ...patch } : c)),
