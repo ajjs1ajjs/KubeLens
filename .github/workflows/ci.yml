@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify version sync (package.json / tauri.conf.json / Cargo.toml)
+        run: npm run check:versions
+
       - name: Lint
         run: npm run lint
 
