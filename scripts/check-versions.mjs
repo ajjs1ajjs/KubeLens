@@ -12,7 +12,9 @@ const cargo = m[1];
 
 console.log(`pkg=${pkg} tauri=${tauri} cargo=${cargo}`);
 if (pkg !== tauri || pkg !== cargo) {
-  console.error(`Version mismatch: pkg=${pkg} tauri=${tauri} cargo=${cargo} — run ./scripts/bump-version.ps1 <version> to sync`);
+  console.error(
+    `Version mismatch: pkg=${pkg} tauri=${tauri} cargo=${cargo} — run ./scripts/bump-version.ps1 <version> to sync`,
+  );
   process.exit(1);
 }
 console.log(`Versions in sync: ${pkg}`);
