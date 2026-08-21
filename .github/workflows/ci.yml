@@ -116,6 +116,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Disable updater artifacts for CI (no signing key)
+        shell: bash
+        run: |
+          node -e "
+            const fs=require('fs');
+            const p='src-tauri/tauri.conf.json';
+            const c=JSON.parse(fs.readFileSync(p,'utf8'));
+            c.bundle.createUpdaterArtifacts=false;
+            fs.writeFileSync(p, JSON.stringify(c,null,2)+'\n');
+            console.log('createUpdaterArtifacts disabled for CI');
+          "
+
       - name: Build bundles
         working-directory: src-tauri
         run: npm run tauri -- build --bundles ${{ matrix.bundle }}
