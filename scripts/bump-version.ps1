@@ -18,7 +18,7 @@ function Set-VersionLine([string]$Path, [string]$Pattern) {
     $content = Get-Content $Path -Raw
     $newContent = [regex]::Replace($content, $Pattern, "`${1}`"$Version`"`${2}", 'Multiline')
     if ($newContent -eq $content) {
-        throw "Failed to bump version in $Path — pattern did not match. File may have unexpected formatting."
+        throw "Failed to bump version in $Path - pattern did not match. File may have unexpected formatting."
     }
     Set-Content -Path $Path -Value $newContent -NoNewline
 }
