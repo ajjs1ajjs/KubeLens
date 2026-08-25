@@ -1,170 +1,143 @@
 <div align="center">
 
-# 🛰️ KubeLens
+<img src="public/app-icon.png" alt="KubeLens" width="96" />
 
-### A modern, lightweight Kubernetes IDE
+# KubeLens
 
-Built with **Tauri 2**, **Rust (kube-rs)** and **React** — a fast, focused
-alternative to Lens. **~15 MB installer · ~40 MB RAM · no account · no telemetry.**
+### A fast, focused Kubernetes desktop IDE
 
-[![CI](https://img.shields.io/github/actions/workflow/status/ajjs1ajjs/KubeLens/ci.yml?branch=main&label=CI&logo=github&style=for-the-badge)](https://github.com/ajjs1ajjs/KubeLens/actions)
-[![Release](https://img.shields.io/github/v/release/ajjs1ajjs/KubeLens?label=Release&logo=semver&style=for-the-badge)](https://github.com/ajjs1ajjs/KubeLens/releases)
-[![Rust](https://img.shields.io/badge/Rust-stable-blueviolet?logo=rust&style=for-the-badge)](https://www.rust-lang.org/)
-[![React](https://img.shields.io/badge/React-19-61dafb?logo=react&style=for-the-badge)](https://react.dev/)
-[![Tauri](https://img.shields.io/badge/Tauri-2-ffc131?logo=tauri&style=for-the-badge)](https://tauri.app/)
+Explore workloads, logs, metrics, Helm releases and dependency topology from one lightweight desktop app.
 
-**Real-time cluster views via the Kubernetes watch API.**
-
-</div>
-
----
-
-## 📸 Screenshots
-
-<sup>Screenshots coming soon.</sup>
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  KubeLens — Pods / default                                  │
-│  ┌──────────┬───────────┬────────┬────────┬───────┬────────┐ │
-│  │ Name     │ Namespace │ Ready  │ Status │ CPU   │ Memory │ │
-│  ├──────────┼───────────┼────────┼────────┼───────┼────────┤ │
-│  │ web-0    │ default   │ 1/1    │ Running│ 125m  │ 64 Mi  │ │
-│  │ db-0     │ default   │ 1/1    │ Running│ 60m   │ 32 Mi  │ │
-│  └──────────┴───────────┴────────┴────────┴───────┴────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## ✨ Features
-
-|                         |                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| 🗂️ **Resource browser** | Pods, Deployments, Services, CRDs, RBAC, Nodes and more — with live watch updates |
-| 📋 **Logs**             | Stream pod logs, follow mode, per-container selection                             |
-| 💻 **Exec terminal**    | Interactive shell into any container (xterm.js)                                   |
-| 🔌 **Port-forward**     | Tunnel pod ports to localhost                                                     |
-| 📈 **Metrics**          | CPU / memory usage for nodes and pods, with request & limit markers               |
-| 📦 **Helm**             | Browse releases, inspect values/manifest/notes, diff revisions                    |
-| 🕸️ **Topology**         | Visual dependency graph of your workloads, with drill-down                        |
-| ✍️ **YAML editor**      | View, edit and apply manifests with validation                                    |
-| 🔀 **Multi-cluster**    | Manage several kubeconfigs — rename, collapse, quick-switch                       |
-| 🌐 **i18n**             | English and Ukrainian UI                                                          |
-| 🔄 **Auto-update**      | In-app update notifications with one-click install                                |
-
-## 🧱 Tech Stack
-
-<div align="center">
-
-**Desktop shell** &nbsp;·&nbsp; [Tauri 2](https://tauri.app/)
-**Backend** &nbsp;·&nbsp; Rust · [kube-rs](https://kube.rs/) · Tokio · prost
-**Frontend** &nbsp;·&nbsp; React 19 · TypeScript · Vite · Tailwind CSS 4 · shadcn/ui · TanStack Query & Table · xterm.js · CodeMirror
+[![CI](https://img.shields.io/github/actions/workflow/status/ajjs1ajjs/KubeLens/ci.yml?branch=main&label=CI&logo=github)](https://github.com/ajjs1ajjs/KubeLens/actions)
+[![Release](https://img.shields.io/github/v/release/ajjs1ajjs/KubeLens?label=latest%20release&logo=semver)](https://github.com/ajjs1ajjs/KubeLens/releases)
+[![License](https://img.shields.io/badge/license-proprietary-111827)](#license)
+[![Rust](https://img.shields.io/badge/Rust-stable-111827?logo=rust)](https://www.rust-lang.org/)
+[![React](https://img.shields.io/badge/React-19-20232a?logo=react)](https://react.dev/)
+[![Tauri](https://img.shields.io/badge/Tauri-2-24c8db?logo=tauri)](https://tauri.app/)
 
 </div>
 
-## 🚀 Getting Started
+## Overview
+
+KubeLens is a modern Kubernetes IDE for developers and platform engineers who want a clear local desktop workflow without a heavy browser-based control plane.
+
+- Lightweight desktop application built with Tauri 2
+- Real-time resource updates through the Kubernetes watch API
+- No account and no telemetry
+- Multi-cluster kubeconfig management with quick switching
+- English and Ukrainian interface
+
+## Features
+
+| Area       | What you can do                                                |
+| ---------- | -------------------------------------------------------------- |
+| Workloads  | Browse Pods, Deployments, Services, CRDs, RBAC, Nodes and more |
+| Logs       | Stream pod logs with follow mode and container selection       |
+| Terminal   | Open an interactive shell in any container                     |
+| Networking | Forward pod ports to localhost                                 |
+| Metrics    | Inspect CPU and memory usage for nodes and pods                |
+| Helm       | Browse releases, values, manifests, notes and revisions        |
+| Topology   | Explore workload dependencies with drill-down navigation       |
+| YAML       | View, edit and apply Kubernetes manifests with validation      |
+| Clusters   | Manage multiple kubeconfigs, rename entries and switch quickly |
+| Updates    | Receive in-app update notifications and install new versions   |
+
+## Tech stack
+
+- **Desktop:** Tauri 2
+- **Backend:** Rust, kube-rs, Tokio, prost
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui
+- **Data and UI:** TanStack Query, TanStack Table, xterm.js, CodeMirror
+
+## Getting started
 
 ### Requirements
 
-- **Node.js 20+** and npm
-- **Rust** (stable) with the MSVC toolchain on Windows (`x86_64-pc-windows-msvc`)
-- **Windows:** Visual Studio Build Tools — "Desktop development with C++" workload
+- Node.js 20+ and npm
+- Rust stable with the MSVC toolchain on Windows
+- Visual Studio Build Tools with the **Desktop development with C++** workload on Windows
 
-> The project pins its Rust toolchain in `src-tauri/rust-toolchain.toml`.
+The repository pins the Rust toolchain in [`src-tauri/rust-toolchain.toml`](src-tauri/rust-toolchain.toml).
 
-### Development
+### Run locally
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-The frontend hot-reloads via Vite while the Rust backend compiles once.
-
-## 📦 Scripts
-
-| Command               | Purpose                                |
-| --------------------- | -------------------------------------- |
-| `npm run dev`         | Vite dev server only                   |
-| `npm run build`       | Type-check + production frontend build |
-| `npm run tauri dev`   | Run the desktop app in development     |
-| `npm run tauri build` | Build distributable bundles            |
-| `npm run test`        | Frontend unit tests (Vitest)           |
-| `npm run lint`        | ESLint                                 |
-| `npm run typecheck`   | TypeScript type-check                  |
-| `npm run check`       | Lint + format + typecheck + tests      |
-
-Rust commands run inside `src-tauri/`:
+To run only the frontend:
 
 ```bash
-cargo test        # Rust unit tests
-cargo clippy      # Lints
-cargo fmt         # Formatting
+npm run dev
 ```
 
-## 🧪 Testing
+## Development commands
 
-Frontend and Rust unit tests don't need a cluster. The Rust backend also has
-integration tests that spin up an in-process **mock Kubernetes API server**
-(`src-tauri/src/k8s/mock_api.rs`) to exercise the full
-client → list/watch/delete/apply pipeline.
+| Command               | Purpose                                         |
+| --------------------- | ----------------------------------------------- |
+| `npm run build`       | Type-check and build the frontend               |
+| `npm run tauri build` | Build distributable desktop bundles             |
+| `npm run test`        | Run frontend unit tests                         |
+| `npm run lint`        | Run ESLint                                      |
+| `npm run typecheck`   | Run the TypeScript checker                      |
+| `npm run check`       | Run version, lint, format, type and test checks |
+| `cargo test`          | Run Rust tests from `src-tauri/`                |
+| `cargo clippy`        | Run Rust lints from `src-tauri/`                |
 
-```bash
-npm run check     # frontend: lint + format + typecheck + tests
-cd src-tauri && cargo test && cargo clippy && cargo fmt
+## Local Kubernetes cluster
+
+For manual testing, create a local [kind](https://kind.sigs.k8s.io/) cluster:
+
+```powershell
+.\scripts\dev-cluster.ps1
+.\scripts\dev-cluster.ps1 -Delete
 ```
 
-## 📁 Project Structure
+Docker and kind are required.
+
+## Project structure
 
 ```text
-src/                      # React frontend
-├── app/                  # layout, routes, pages
-├── features/             # clusters, resources, helm, topology, updates
-├── components/ui/        # shadcn/ui primitives
-├── i18n/                 # EN / UK locales
-└── lib/k8s/              # API client, types, helpers
+src/                     React frontend
+├── app/                 Layout, routes and pages
+├── features/            Clusters, resources, Helm, topology and updates
+├── components/ui/       Shared UI primitives
+├── i18n/                English and Ukrainian locales
+└── lib/k8s/             API client, types and helpers
 
-src-tauri/                # Rust backend (Tauri)
-├── src/commands/         # IPC command handlers
-├── src/k8s/              # cluster manager, resources, watch, helm, metrics, interactive
-└── tauri.conf.json       # app config, CSP, updater
+src-tauri/               Rust backend
+├── src/commands/        Tauri IPC command handlers
+├── src/k8s/             Kubernetes clients and resource operations
+└── tauri.conf.json      Desktop configuration and updater settings
 ```
 
-## 🧑‍💻 Local test cluster
+## Testing
 
-A kind cluster helps manual testing:
+Frontend tests do not require a live cluster. The Rust backend also includes an in-process mock Kubernetes API server.
+
+```bash
+npm run check
+cd src-tauri && cargo test && cargo clippy
+```
+
+## Releases
+
+Releases are created from version tags:
 
 ```powershell
-.\scripts\dev-cluster.ps1         # create
-.\scripts\dev-cluster.ps1 -Delete # remove
+.\scripts\bump-version.ps1 1.2.3
+git push origin main --tags
 ```
 
-Requires Docker and kind.
-
-## 🚢 CI & Releases
-
-`.github/workflows/ci.yml` runs lint, format, type-check, frontend and Rust tests
-on Windows and macOS, and produces installers (NSIS on Windows, DMG on macOS).
-
-Releases are driven by version tags (`v*`):
-
-```powershell
-.\scripts\bump-version.ps1 1.2.3   # bump + commit + tag v1.2.3
-git push origin main --tags         # triggers the Release workflow
-```
-
-`bump-version.ps1` keeps `Cargo.toml`, `tauri.conf.json` and `package.json` in
-sync and creates the `v<version>` tag.
-
----
-
-<div align="center">
-
-Made with ❤️ for the Kubernetes community.
-
-</div>
+The version is kept in sync across `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
 
 ## License
 
-<a id="license"></a>
-
 Private project. All rights reserved.
+
+<div align="center">
+
+Made for a calmer Kubernetes workflow.
+
+</div>
