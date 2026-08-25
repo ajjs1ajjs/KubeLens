@@ -8,6 +8,7 @@ import {
   Link,
   LoaderCircle,
   MoreHorizontal,
+  Pencil,
   Unlink,
   Network,
   Plus,
@@ -37,6 +38,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { RESOURCE_GROUPS } from "@/features/resources/resource-types";
 import { useClusterStore } from "@/features/clusters/cluster-store";
 import { connectCluster, disconnectCluster } from "@/features/clusters/use-clusters";
@@ -48,10 +58,14 @@ function ClusterRow({
   cluster,
   active,
   onSelect,
+  onRename,
+  displayName,
 }: {
   cluster: ClusterInfo;
   active: boolean;
   onSelect: () => void;
+  onRename: () => void;
+  displayName: string;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -99,7 +113,7 @@ function ClusterRow({
       <SidebarMenuButton
         isActive={active}
         onClick={handleSelect}
-        tooltip={cluster.name}
+        tooltip={displayName}
         onContextMenu={(e) => {
           e.preventDefault();
           setMenuOpen(true);
@@ -107,7 +121,7 @@ function ClusterRow({
       >
         <Server className="size-4" />
         <span className="flex min-w-0 flex-1 flex-col items-start leading-tight group-data-[collapsible=icon]:hidden">
-          <span className="max-w-full truncate">{cluster.name}</span>
+          <span className="max-w-full truncate">{displayName}</span>
           <span
             className="text-muted-foreground max-w-full truncate text-[10px] font-normal"
             title={cluster.error}
@@ -143,6 +157,10 @@ function ClusterRow({
             {t("sidebar.switchTo")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onRename}>
+            <Pencil className="mr-2 size-4" />
+            {t("sidebar.rename", { name: displayName })}
+          </DropdownMenuItem>
           {cluster.connected ? (
             <DropdownMenuItem onClick={() => void handleDisconnect()}>
               <Unlink className="mr-2 size-4" />
@@ -164,7 +182,10 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const clusters = useClusterStore((s) => s.clusters);
   const activeClusterId = useClusterStore((s) => s.activeClusterId);
+  const configs = useClusterStore((s) => s.configs);
   const queryClient = useQueryClient();
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const [savingRename, setSavingRename] = useState(false);
 
   const reloadClusters = async () => {
     await k8sApi.reloadKubeconfig();
@@ -177,6 +198,20 @@ export function AppSidebar() {
     if (typeof picked !== "string") return;
     await k8sApi.addClusterConfig(picked);
     await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+  };
+
+  const saveRename = async () => {
+    if (!renaming || savingRename) return;
+    const name = renaming.name.trim();
+    if (!name) return;
+    setSavingRename(true);
+    try {
+      await k8sApi.renameClusterConfig(renaming.id, name);
+      await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+      setRenaming(null);
+    } finally {
+      setSavingRename(false);
+    }
   };
 
   return (
@@ -242,6 +277,14 @@ export function AppSidebar() {
                       key={cluster.id}
                       cluster={cluster}
                       active={cluster.id === activeClusterId}
+                      displayName={
+                        configs.find((config) => config.id === cluster.configId)?.name ??
+                        cluster.name
+                      }
+                      onRename={() => {
+                        const config = configs.find((item) => item.id === cluster.configId);
+                        if (config) setRenaming({ id: config.id, name: config.name });
+                      }}
                       onSelect={() => {
                         useClusterStore.getState().setActiveCluster(cluster.id);
                         useClusterStore.getState().setActiveNamespace("");
@@ -298,6 +341,38 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <Dialog open={renaming !== null} onOpenChange={(open) => !open && setRenaming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("sidebar.renameTitle")}</DialogTitle>
+            <DialogDescription>{t("sidebar.renameDescription")}</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={renaming?.name ?? ""}
+            onChange={(event) =>
+              setRenaming((current) =>
+                current ? { ...current, name: event.target.value } : current,
+              )
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void saveRename();
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenaming(null)} disabled={savingRename}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={() => void saveRename()}
+              disabled={savingRename || !renaming?.name.trim()}
+            >
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <SidebarFooter>
         <SidebarMenu>

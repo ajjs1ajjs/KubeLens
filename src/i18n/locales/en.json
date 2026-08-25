@@ -90,6 +90,8 @@
     "collapse": "Collapse config",
     "expand": "Expand config",
     "rename": "Rename {{name}}",
+    "renameTitle": "Rename cluster",
+    "renameDescription": "Choose a display name for this added cluster configuration.",
     "remove": "Remove {{name}}",
     "setActive": "Set as active",
     "connect": "Connect",
