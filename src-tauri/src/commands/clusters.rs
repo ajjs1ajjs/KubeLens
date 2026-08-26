@@ -2,7 +2,7 @@ use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
 use crate::k8s::cluster_manager::{
-    config_entries_from_stored, default_config_name, ClusterManager,
+    ClusterManager, config_entries_from_stored, default_config_name,
 };
 use crate::k8s::models::{ClusterConfig, ClusterSummary};
 

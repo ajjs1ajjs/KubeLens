@@ -53,7 +53,7 @@ KubeLens is a modern Kubernetes IDE for developers and platform engineers who wa
 
 ### Requirements
 
-- Node.js 20+ and npm
+- Node.js 22+ and npm
 - Rust stable with the MSVC toolchain on Windows
 - Visual Studio Build Tools with the **Desktop development with C++** workload on Windows
 

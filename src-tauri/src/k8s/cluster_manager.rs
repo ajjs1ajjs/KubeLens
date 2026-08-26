@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use kube::config::{Config, KubeConfigOptions, Kubeconfig};
 use kube::Client;
+use kube::config::{Config, KubeConfigOptions, Kubeconfig};
 
 use crate::k8s::models::{ClusterConfig, ClusterSummary};
 
@@ -334,7 +334,7 @@ current-context: ctx-a
         )
         .unwrap();
 
-        std::env::set_var("KUBECONFIG", path.to_str().unwrap());
+        unsafe { std::env::set_var("KUBECONFIG", path.to_str().unwrap()) };
         let manager = ClusterManager::default();
         let clusters = manager.list_clusters().unwrap();
 
@@ -344,7 +344,7 @@ current-context: ctx-a
         assert_eq!(clusters[0].namespace.as_deref(), Some("team-x"));
         assert!(clusters[0].current);
         assert!(!clusters[0].connected);
-        std::env::remove_var("KUBECONFIG");
+        unsafe { std::env::remove_var("KUBECONFIG") };
         let _ = std::fs::remove_dir_all(&dir);
     }
 

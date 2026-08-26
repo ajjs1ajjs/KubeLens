@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use futures::channel::mpsc;
 use futures::AsyncBufReadExt;
 use futures::StreamExt;
+use futures::channel::mpsc;
 use k8s_openapi::api::core::v1::Pod;
-use kube::api::{Api, AttachParams, LogParams};
 use kube::Client;
+use kube::api::{Api, AttachParams, LogParams};
 use tauri::Emitter;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -457,8 +457,8 @@ fn io_err(err: std::io::Error) -> String {
 mod tests {
     use std::time::Duration;
 
-    use futures::channel::mpsc;
     use futures::StreamExt;
+    use futures::channel::mpsc;
 
     use crate::k8s::interactive;
     use crate::k8s::mock_api;

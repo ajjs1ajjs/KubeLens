@@ -31,10 +31,10 @@ pub fn kubeconfig_paths(env: Option<&str>, home: Option<&Path>) -> Vec<PathBuf> 
         }
     }
 
-    if paths.is_empty() {
-        if let Some(home) = home {
-            paths.push(home.join(".kube").join("config"));
-        }
+    if paths.is_empty()
+        && let Some(home) = home
+    {
+        paths.push(home.join(".kube").join("config"));
     }
 
     paths

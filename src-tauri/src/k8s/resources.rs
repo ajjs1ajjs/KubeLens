@@ -1,9 +1,9 @@
 //! Typed/dynamic Kubernetes resource access via the kube-rs client.
 
+use kube::Client;
 use kube::api::{
     Api, ApiResource, DeleteParams, DynamicObject, GroupVersionKind, ListParams, Patch, PatchParams,
 };
-use kube::Client;
 
 use crate::k8s::cluster_manager::ClusterManager;
 use crate::k8s::models::ResourceContext;

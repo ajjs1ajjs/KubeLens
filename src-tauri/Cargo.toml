@@ -3,7 +3,7 @@ name = "kubelens"
 version = "0.1.17"
 description = "A modern, lightweight Kubernetes IDE"
 authors = ["KubeLens"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,13 +22,15 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9"
+# serde_yaml is deprecated/archived upstream; serde-yaml-ng is a drop-in
+# maintained fork exposed here under the same crate name
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 kube = { version = "4.0.0", features = ["runtime", "ws", "oidc"] }
 k8s-openapi = { version = "0.28.0", features = ["latest"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "net", "io-util", "time"] }
 futures = "0.3"
 uuid = { version = "1", features = ["v4"] }
-prost = { version = "0.13", features = ["derive"] }
+prost = { version = "0.14", features = ["derive"] }
 flate2 = "1"
 base64 = "0.22"
 tauri-plugin-dialog = "2"

@@ -5,9 +5,9 @@ use std::sync::Mutex;
 
 use futures::StreamExt;
 use kube::api::{Api, DynamicObject};
+use kube::runtime::WatchStreamExt;
 use kube::runtime::reflector;
 use kube::runtime::watcher;
-use kube::runtime::WatchStreamExt;
 use tauri::{AppHandle, Emitter};
 
 use crate::k8s::cluster_manager::ClusterManager;
@@ -129,11 +129,11 @@ where
 mod tests {
     use std::time::Duration;
 
-    use futures::channel::mpsc;
     use futures::StreamExt;
+    use futures::channel::mpsc;
 
     use crate::k8s::mock_api;
-    use crate::k8s::testsupport::{manager_with_mock, pod_ctx, CTX};
+    use crate::k8s::testsupport::{CTX, manager_with_mock, pod_ctx};
 
     #[tokio::test]
     async fn lists_resources_from_api() {

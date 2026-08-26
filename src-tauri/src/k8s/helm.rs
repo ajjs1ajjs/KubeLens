@@ -502,7 +502,7 @@ pub(crate) fn mock_release_secret(
 mod tests {
     use super::*;
     use crate::k8s::mock_api;
-    use crate::k8s::testsupport::{manager_with_mock, CTX};
+    use crate::k8s::testsupport::{CTX, manager_with_mock};
 
     #[test]
     fn decodes_release_payload() {
