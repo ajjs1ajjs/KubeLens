@@ -11,6 +11,9 @@ const srcDir = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  // GitHub Pages serves the production frontend from /KubeLens/.
+  base: "/KubeLens/",
+
   plugins: [react(), tailwindcss()],
 
   resolve: {
