@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_name }}"
+          TAG="${{ inputs.release_tag || github.ref_name }}"
           VER="${TAG#v}"
           PKG=$(node -p "require('./package.json').version")
           TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
@@ -74,7 +74,7 @@ jobs:
         with:
           owner: ajjs1ajjs
           repo: KubeLens
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ inputs.release_tag || github.ref_name }}
           releaseName: "KubeLens ${{ github.ref_name }}"
           releaseBody: |
             See the [changelog](https://github.com/ajjs1ajjs/KubeLens/releases) for details.
