@@ -37,7 +37,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVDMkNGQzlGRkUwRDFGNEIKUldSTEh3MytuL3dzWEZybGRBaUZ3azViUitkS0hKZy9zam5zNnJoeVM2THhvQ1N4SmFtcWtGU3YK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVCM0IyNDNFQkQ4RTcyMzYKUldRMmNvNjlQaVE3Vy92TlQ4Zi95aHJ0Vlc1NjBFL3pXamRoZ01vbzV0Q0xLb3RzZ052dUVrenUK",
       "endpoints": [
         "https://github.com/ajjs1ajjs/KubeLens/releases/latest/download/latest.json"
       ]
