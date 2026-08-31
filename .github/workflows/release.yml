@@ -25,8 +25,6 @@ jobs:
             args: --bundles nsis
           - platform: macos-latest
             args: --bundles dmg
-          - platform: ubuntu-latest
-            args: --bundles deb,appimage
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -37,12 +35,6 @@ jobs:
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install dependencies
         run: npm ci
