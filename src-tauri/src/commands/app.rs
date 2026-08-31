@@ -19,10 +19,13 @@ pub fn app_info() -> AppInfo {
     let paths =
         kubeconfig::kubeconfig_paths(std::env::var("KUBECONFIG").ok().as_deref(), home.as_deref());
 
+    let platform = std::env::consts::OS;
+    let platform_windows = platform == "windows";
+
     AppInfo {
         name: env!("CARGO_PKG_NAME"),
         version: env!("CARGO_PKG_VERSION"),
-        platform: std::env::consts::OS,
+        platform: if platform_windows { "windows" } else { "unsupported" },
         default_kubeconfig: paths.first().map(|p| p.to_string_lossy().into_owned()),
     }
 }
