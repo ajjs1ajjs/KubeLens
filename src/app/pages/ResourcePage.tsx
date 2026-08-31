@@ -21,6 +21,7 @@ import {
 } from "@/features/resources/use-metrics";
 import { meta as objectMeta } from "@/lib/k8s/object";
 import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
+import { ResizablePanel } from "@/components/ui/resizable";
 
 export function ResourcePage() {
   const { t } = useTranslation();
@@ -120,40 +121,46 @@ export function ResourcePage() {
         </div>
       </div>
 
-      <div className="mt-4 flex min-h-0 flex-1 flex-col">
-        {isPending ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-        ) : isError ? (
-          <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 rounded-md border border-dashed p-12 text-sm">
-            <p>{t("resources.page.failedToLoad", { kind })}</p>
-            <p className="max-w-md truncate text-xs">{String(error)}</p>
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-              {t("common.reload")}
-            </Button>
-          </div>
-        ) : (
-          <ResourceTable
-            kind={kind ?? "Resource"}
-            objects={objects}
-            showNamespace={Boolean(meta?.namespaced) && activeNamespace === ""}
-            metrics={metrics}
-            onSelect={setSelected}
-            onEdit={setEditObject}
-            onDelete={setDeleteTarget}
-          />
+      <div className="mt-4 flex min-h-0 flex-1 gap-0 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {isPending ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : isError ? (
+            <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 rounded-md border border-dashed p-12 text-sm">
+              <p>{t("resources.page.failedToLoad", { kind })}</p>
+              <p className="max-w-md truncate text-xs">{String(error)}</p>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                {t("common.reload")}
+              </Button>
+            </div>
+          ) : (
+            <ResourceTable
+              kind={kind ?? "Resource"}
+              objects={objects}
+              showNamespace={Boolean(meta?.namespaced) && activeNamespace === ""}
+              metrics={metrics}
+              onSelect={setSelected}
+              onEdit={setEditObject}
+              onDelete={setDeleteTarget}
+            />
+          )}
+        </div>
+
+        {selected && (
+          <ResizablePanel defaultWidth={440} minWidth={320} maxWidth={720}>
+            <ResourceDetail
+              kind={kind ?? "Resource"}
+              object={selected}
+              ctx={ctx}
+              onOpenChange={(open) => !open && setSelected(null)}
+            />
+          </ResizablePanel>
         )}
       </div>
-
-      <ResourceDetail
-        kind={kind ?? "Resource"}
-        object={selected}
-        ctx={ctx}
-        onOpenChange={(open) => !open && setSelected(null)}
-      />
 
       <ManifestDialog
         open={createOpen}

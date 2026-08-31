@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 
 export type UpdateStatus =
-  "idle" | "checking" | "available" | "downloading" | "up-to-date" | "error";
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "up-to-date"
+  | "error"
+  | "no-release";
 
 export interface UseUpdateResult {
   status: UpdateStatus;
@@ -44,8 +50,19 @@ export function useUpdate(): UseUpdateResult {
         setStatus("up-to-date");
       }
     } catch (err) {
-      setError(String(err));
-      setStatus("error");
+      const msg = String(err);
+      if (
+        msg.includes("Could not fetch") ||
+        msg.includes("JSON") ||
+        msg.includes("404") ||
+        msg.includes("Not Found")
+      ) {
+        setStatus("no-release");
+        setError(null);
+      } else {
+        setError(msg);
+        setStatus("error");
+      }
     }
   }, []);
 

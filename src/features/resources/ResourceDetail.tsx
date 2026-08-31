@@ -1,14 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatAge, meta, podSummary, readyReplicas, readPath } from "@/lib/k8s/object";
 import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
@@ -53,101 +47,107 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
   const resourceCtx = isPod && ctx ? { ...ctx, namespace: m.namespace ?? ctx.namespace } : null;
 
   return (
-    <Sheet open onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>
-            <span className="text-muted-foreground mr-2 text-xs font-normal">{kind}</span>
-            {m.name}
-          </SheetTitle>
-          <SheetDescription>
+    <div className="bg-background flex h-full flex-col border-l">
+      <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+        <div className="min-w-0">
+          <div className="text-muted-foreground text-xs font-normal">{kind}</div>
+          <div className="truncate text-sm font-medium">{m.name}</div>
+          <div className="text-muted-foreground text-xs">
             {m.namespace ? `${m.namespace} · ` : `${t("common.clusterScoped")} · `}
             created {formatAge(m.creationTimestamp)}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4">
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(m.labels).map(([key, value]) => (
-              <Badge key={key} variant="secondary">
-                {key}={value}
-              </Badge>
-            ))}
-            {Object.keys(m.labels).length === 0 && (
-              <span className="text-muted-foreground text-xs">
-                {t("resources.detail.noLabels")}
-              </span>
-            )}
           </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => onOpenChange(false)}
+          className="shrink-0"
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
 
-          <div className="flex flex-col gap-1.5 rounded-md border p-3">
-            <Field label={t("resources.detail.phase")}>
-              {typeof phase === "string" ? phase : "—"}
-            </Field>
-            {replicas && <Field label="Ready">{replicas}</Field>}
-            {pod.ready && <Field label="Ready">{pod.ready}</Field>}
-            {typeof pod.restarts === "number" && pod.restarts > 0 && (
-              <Field label={t("resources.detail.restarts")}>{pod.restarts}</Field>
-            )}
-            {image && <Field label={t("resources.detail.image")}>{image}</Field>}
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            {isPod && resourceCtx && (
-              <Button size="sm" variant="outline" onClick={() => setPortForwardOpen(true)}>
-                {t("resources.detail.portForward")}
-              </Button>
-            )}
-            <span className="text-muted-foreground ml-auto text-xs">
-              {containers.length > 1
-                ? t("resources.detail.containers", { count: containers.length })
-                : containers.length === 1
-                  ? t("resources.detail.oneContainer")
-                  : ""}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-4">
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(m.labels).map(([key, value]) => (
+            <Badge key={key} variant="secondary">
+              {key}={value}
+            </Badge>
+          ))}
+          {Object.keys(m.labels).length === 0 && (
+            <span className="text-muted-foreground text-xs">
+              {t("resources.detail.noLabels")}
             </span>
-          </div>
-
-          <Tabs defaultValue="raw" className="flex min-h-0 flex-1 flex-col">
-            <TabsList className="w-fit">
-              <TabsTrigger value="raw">{t("resources.detail.rawJson")}</TabsTrigger>
-              {isPod && resourceCtx && (
-                <>
-                  <TabsTrigger value="metrics">{t("resources.detail.metrics")}</TabsTrigger>
-                  <TabsTrigger value="logs">{t("resources.detail.logs")}</TabsTrigger>
-                  <TabsTrigger value="terminal">{t("resources.detail.terminal")}</TabsTrigger>
-                </>
-              )}
-            </TabsList>
-            <TabsContent value="raw" className="min-h-0 flex-1 overflow-auto">
-              <pre className="bg-muted/50 rounded-md p-3 text-xs">{raw}</pre>
-            </TabsContent>
-            {isPod && resourceCtx && (
-              <TabsContent value="metrics" className="min-h-0 flex-1 overflow-auto">
-                <PodMetricsTab ctx={resourceCtx} name={m.name} pod={object} />
-              </TabsContent>
-            )}
-            {isPod && resourceCtx && (
-              <TabsContent value="logs" className="min-h-0 flex-1 overflow-auto">
-                <LogsViewer ctx={resourceCtx} name={m.name} containers={containers} />
-              </TabsContent>
-            )}
-            {isPod && resourceCtx && (
-              <TabsContent value="terminal" className="min-h-0 flex-1 overflow-hidden">
-                <TerminalTab ctx={resourceCtx} name={m.name} containers={containers} />
-              </TabsContent>
-            )}
-          </Tabs>
+          )}
         </div>
 
-        {isPod && resourceCtx && (
-          <PortForwardDialog
-            open={portForwardOpen}
-            onOpenChange={setPortForwardOpen}
-            ctx={resourceCtx}
-            name={m.name}
-          />
-        )}
-      </SheetContent>
-    </Sheet>
+        <div className="flex flex-col gap-1.5 rounded-md border p-3">
+          <Field label={t("resources.detail.phase")}>
+            {typeof phase === "string" ? phase : "—"}
+          </Field>
+          {replicas && <Field label="Ready">{replicas}</Field>}
+          {pod.ready && <Field label="Ready">{pod.ready}</Field>}
+          {typeof pod.restarts === "number" && pod.restarts > 0 && (
+            <Field label={t("resources.detail.restarts")}>{pod.restarts}</Field>
+          )}
+          {image && <Field label={t("resources.detail.image")}>{image}</Field>}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {isPod && resourceCtx && (
+            <Button size="sm" variant="outline" onClick={() => setPortForwardOpen(true)}>
+              {t("resources.detail.portForward")}
+            </Button>
+          )}
+          <span className="text-muted-foreground ml-auto text-xs">
+            {containers.length > 1
+              ? t("resources.detail.containers", { count: containers.length })
+              : containers.length === 1
+                ? t("resources.detail.oneContainer")
+                : ""}
+          </span>
+        </div>
+
+        <Tabs defaultValue="raw" className="flex min-h-0 flex-1 flex-col">
+          <TabsList className="w-fit">
+            <TabsTrigger value="raw">{t("resources.detail.rawJson")}</TabsTrigger>
+            {isPod && resourceCtx && (
+              <>
+                <TabsTrigger value="metrics">{t("resources.detail.metrics")}</TabsTrigger>
+                <TabsTrigger value="logs">{t("resources.detail.logs")}</TabsTrigger>
+                <TabsTrigger value="terminal">{t("resources.detail.terminal")}</TabsTrigger>
+              </>
+            )}
+          </TabsList>
+          <TabsContent value="raw" className="min-h-0 flex-1 overflow-auto">
+            <pre className="bg-muted/50 rounded-md p-3 text-xs">{raw}</pre>
+          </TabsContent>
+          {isPod && resourceCtx && (
+            <TabsContent value="metrics" className="min-h-0 flex-1 overflow-auto">
+              <PodMetricsTab ctx={resourceCtx} name={m.name} pod={object} />
+            </TabsContent>
+          )}
+          {isPod && resourceCtx && (
+            <TabsContent value="logs" className="min-h-0 flex-1 overflow-auto">
+              <LogsViewer ctx={resourceCtx} name={m.name} containers={containers} />
+            </TabsContent>
+          )}
+          {isPod && resourceCtx && (
+            <TabsContent value="terminal" className="min-h-0 flex-1 overflow-hidden">
+              <TerminalTab ctx={resourceCtx} name={m.name} containers={containers} />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
+
+      {isPod && resourceCtx && (
+        <PortForwardDialog
+          open={portForwardOpen}
+          onOpenChange={setPortForwardOpen}
+          ctx={resourceCtx}
+          name={m.name}
+        />
+      )}
+    </div>
   );
 }
