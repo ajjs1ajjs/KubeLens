@@ -1,6 +1,17 @@
-<div align="center">
+﻿<div align="center">
 
 <img src="public/app-icon.png" alt="KubeLens" width="96" />
+
+# KubeLens — Source Code
+
+[![Deployed to](https://img.shields.io/badge/Deployed_to-KubeLens-blue)](https://github.com/ajjs1ajjs/KubeLens)
+[![Website](https://img.shields.io/badge/Website-ajjs1ajjs.github.io%2FKubeLens-green)](https://ajjs1ajjs.github.io/KubeLens/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/ajjs1ajjs/KubeLens-source/ci.yml?label=CI)](https://github.com/ajjs1ajjs/KubeLens-source/actions)
+
+> **Це репозиторій з вихідним кодом KubeLens Kubernetes IDE.**
+> Готовий продукт деплоїться в: **https://github.com/ajjs1ajjs/KubeLens**
+> Офіційний сайт: **https://ajjs1ajjs.github.io/KubeLens/**
 
 # KubeLens
 
@@ -10,7 +21,7 @@ Explore workloads, logs, metrics, Helm releases and dependency topology from one
 
 [![CI](https://img.shields.io/github/actions/workflow/status/ajjs1ajjs/KubeLens/ci.yml?branch=main&label=CI&logo=github)](https://github.com/ajjs1ajjs/KubeLens/actions)
 [![Release](https://img.shields.io/github/v/release/ajjs1ajjs/KubeLens?label=latest%20release&logo=semver)](https://github.com/ajjs1ajjs/KubeLens/releases)
-[![License](https://img.shields.io/badge/license-proprietary-111827)](#license)
+[![License: MIT](https://img.shields.io/badge/license-MIT-111827)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-stable-111827?logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-19-20232a?logo=react)](https://react.dev/)
 [![Tauri](https://img.shields.io/badge/Tauri-2-24c8db?logo=tauri)](https://tauri.app/)
@@ -40,7 +51,7 @@ KubeLens is a modern Kubernetes IDE for developers and platform engineers who wa
 | Topology   | Explore workload dependencies with drill-down navigation       |
 | YAML       | View, edit and apply Kubernetes manifests with validation      |
 | Clusters   | Manage multiple kubeconfigs, rename entries and switch quickly |
-| Updates    | Receive in-app update notifications and install new versions   |
+| Updates    | Receive in-app update notifications and install new versions  
 
 ## Tech stack
 
@@ -134,7 +145,7 @@ The version is kept in sync across `package.json`, `src-tauri/Cargo.toml` and `s
 
 ## License
 
-Private project. All rights reserved.
+MIT — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
