@@ -55,7 +55,7 @@ export function ResizablePanel({
     <div className={cn("flex h-full shrink-0", className)} style={{ width }}>
       <div
         onMouseDown={onMouseDown}
-        className="bg-border hover:bg-primary/40 w-1 cursor-col-resize shrink-0 transition-colors"
+        className="bg-border hover:bg-primary/40 w-1 shrink-0 cursor-col-resize transition-colors"
       />
       <div className="min-w-0 flex-1 overflow-hidden">{children}</div>
     </div>

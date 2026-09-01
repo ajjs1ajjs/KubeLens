@@ -237,7 +237,8 @@
   "updates": {
     "checking": "Перевірка оновлень…",
     "available": "Доступна версія KubeLens {{version}}",
-    "downloading": "Завантаження оновлення…"
+    "downloading": "Завантаження оновлення…",
+    "downloadingProgress": "Завантаження оновлення… {{progress}}%"
   },
   "header": {
     "noCluster": "Кластер не підключено",

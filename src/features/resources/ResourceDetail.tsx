@@ -75,9 +75,7 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
             </Badge>
           ))}
           {Object.keys(m.labels).length === 0 && (
-            <span className="text-muted-foreground text-xs">
-              {t("resources.detail.noLabels")}
-            </span>
+            <span className="text-muted-foreground text-xs">{t("resources.detail.noLabels")}</span>
           )}
         </div>
 

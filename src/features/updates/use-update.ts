@@ -2,18 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 
 export type UpdateStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "downloading"
-  | "up-to-date"
-  | "error"
-  | "no-release";
+  "idle" | "checking" | "available" | "downloading" | "up-to-date" | "error" | "no-release";
 
 export interface UseUpdateResult {
   status: UpdateStatus;
   version: string | null;
   error: string | null;
+  progress: number | null;
   checkForUpdates: () => Promise<void>;
   installUpdate: () => Promise<void>;
   dismiss: () => void;
@@ -28,6 +23,7 @@ export function useUpdate(): UseUpdateResult {
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [version, setVersion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
   const updateRef = useRef<Update | null>(null);
   const checkedOnce = useRef(false);
   const statusRef = useRef<UpdateStatus>("idle");
@@ -40,6 +36,7 @@ export function useUpdate(): UseUpdateResult {
     if (statusRef.current === "checking" || statusRef.current === "downloading") return;
     setStatus("checking");
     setError(null);
+    setProgress(null);
     try {
       const update = await check();
       updateRef.current = update;
@@ -79,19 +76,29 @@ export function useUpdate(): UseUpdateResult {
     if (!update) return;
     setStatus("downloading");
     setError(null);
+    setProgress(0);
     try {
-      await update.downloadAndInstall();
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          setProgress(0);
+        } else if (event.event === "Progress") {
+          setProgress((prev) => (prev ?? 0) + Number(event.data.chunkLength));
+        }
+      });
+      setProgress(100);
       setStatus("idle");
     } catch (err) {
       setError(String(err));
       setStatus("available");
+      setProgress(null);
     }
   }, []);
 
   const dismiss = useCallback(() => {
     setStatus("idle");
     setVersion(null);
+    setProgress(null);
   }, []);
 
-  return { status, version, error, checkForUpdates, installUpdate, dismiss };
+  return { status, version, error, progress, checkForUpdates, installUpdate, dismiss };
 }

@@ -6,7 +6,7 @@ import { useUpdate } from "./use-update";
 /** Shows a banner when a new app version is available. */
 export function UpdateBanner() {
   const { t } = useTranslation();
-  const { status, version, error, checkForUpdates, installUpdate, dismiss } = useUpdate();
+  const { status, version, error, progress, checkForUpdates, installUpdate, dismiss } = useUpdate();
 
   if (
     status !== "available" &&
@@ -44,7 +44,11 @@ export function UpdateBanner() {
         {downloading && (
           <>
             <RefreshCw className="size-4 animate-spin" />
-            <span>{t("updates.downloading")}</span>
+            <span>
+              {progress !== null && progress > 0 && progress < 100
+                ? t("updates.downloadingProgress", { progress })
+                : t("updates.downloading")}
+            </span>
           </>
         )}
         {status === "error" && (

@@ -237,7 +237,8 @@
   "updates": {
     "checking": "Checking for updates…",
     "available": "KubeLens {{version}} is available",
-    "downloading": "Downloading update…"
+    "downloading": "Downloading update…",
+    "downloadingProgress": "Downloading update… {{progress}}%"
   },
   "header": {
     "noCluster": "No cluster connected",

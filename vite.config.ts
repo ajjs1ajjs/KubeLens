@@ -6,13 +6,18 @@ import { fileURLToPath } from "node:url";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// Tauri sets TAURI_ENV_* vars for beforeDevCommand/beforeBuildCommand.
+// When building for desktop, assets must be at "/" (tauri:// / http://localhost:1420).
+// GitHub Pages serves from "/KubeLens/", so use subpath only for web builds.
+const isTauri =
+  // @ts-expect-error process is a nodejs global
+  !!process.env.TAURI_ENV_PLATFORM || !!process.env.TAURI_PLATFORM;
 
 const srcDir = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  // GitHub Pages serves the production frontend from /KubeLens/.
-  base: "/KubeLens/",
+  base: isTauri ? "/" : "/KubeLens/",
 
   plugins: [react(), tailwindcss()],
 
