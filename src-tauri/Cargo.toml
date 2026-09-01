@@ -1,6 +1,6 @@
 [package]
 name = "kubelens"
-version = "0.2.3"
+version = "0.2.4"
 description = "A modern, lightweight Kubernetes IDE"
 authors = ["KubeLens"]
 edition = "2024"
