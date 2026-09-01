@@ -25,7 +25,11 @@ pub fn app_info() -> AppInfo {
     AppInfo {
         name: env!("CARGO_PKG_NAME"),
         version: env!("CARGO_PKG_VERSION"),
-        platform: if platform_windows { "windows" } else { "unsupported" },
+        platform: if platform_windows {
+            "windows"
+        } else {
+            "unsupported"
+        },
         default_kubeconfig: paths.first().map(|p| p.to_string_lossy().into_owned()),
     }
 }
