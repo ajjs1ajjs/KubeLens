@@ -45,11 +45,7 @@ jobs:
 
   test-rust:
     name: Test Rust
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
 
@@ -78,17 +74,9 @@ jobs:
         run: cargo test
 
   bundle:
-    name: Bundle (${{ matrix.os }})
+    name: Bundle
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            bundle: nsis
-          - os: macos-latest
-            bundle: dmg
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
 
@@ -116,12 +104,12 @@ jobs:
 
       - name: Build bundles
         working-directory: src-tauri
-        run: npm run tauri -- build --bundles ${{ matrix.bundle }}
+        run: npm run tauri -- build --bundles nsis
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kubelens-${{ matrix.os }}
+          name: kubelens-windows-latest
           path: |
             src-tauri/target/release/bundle/
           if-no-files-found: error

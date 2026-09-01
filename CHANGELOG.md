@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.2
+
+- **Виправлено Windows-збірку:** повернуто `bundle.targets = ["nsis"]` у `tauri.conf.json` (у v0.2.2/auto-release було створено хибне невалідне значення `"windows"`, яке ламало `cargo check`/`tauri build` і реліз).
+- **KubeLens тепер Windows-only:** видалено macOS-джоби з `release.yml` та `ci.yml`; застосунок повідомляє про непідтримувану платформу поза Windows. Оновлено README-бейдж платформи.
+- Виправлено несправний CI-бейдж у README (`KubeLens-source` → `KubeLens`).
+- Оновлено дефолт `workflow_dispatch` у `release.yml`.
+
 ## v0.2.1
 
 - **Resizable detail panel:** панель деталей ресурсу тепер ресайзабельна (тягни межу зліва)
