@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.9
+
+- **Updater manifest fix:** `latest.json` тепер використовує поле `url` замість `tauri` — Tauri updater plugin вимагає саме `url` для поля з URL інсталятора.
+
 ## v0.2.8
 
 - **Updater endpoint fixed:** `tauri.conf.json` endpoint змінено з `{{target}}.json` на `latest.json`. GitHub Pages workflow тепер генерує чистий `latest.json` з одним ключем `windows-x86_64` та SHA256 checksum. Release workflow вимкнено `createUpdaterArtifacts` (раніше `tauri-action` генерував маніфест з дублікатними ключами `windows-x86_64` + `windows-x86_64-nsis`, що ламало парсинг у Tauri updater plugin).
