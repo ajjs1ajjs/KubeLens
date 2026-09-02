@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.8
+
+- **Updater endpoint fixed:** `tauri.conf.json` endpoint змінено з `{{target}}.json` на `latest.json`. GitHub Pages workflow тепер генерує чистий `latest.json` з одним ключем `windows-x86_64` та SHA256 checksum. Release workflow вимкнено `createUpdaterArtifacts` (раніше `tauri-action` генерував маніфест з дублікатними ключами `windows-x86_64` + `windows-x86_64-nsis`, що ламало парсинг у Tauri updater plugin).
+- **Error handling improved:** `use-update.ts` тепер не замовчує HTTP 404/not-found помилки, дозволяючи коректне відображення стану " немає оновлень".
+
 ## v0.2.6
 
 - **GitHub Pages deploy fixed:** `pages.yml` тепер збирає фронтенд (`npm ci && npm run build`) і публікує лише `dist/` замість всього репозиторію (раніше у публічний доступ потрапляли `.git`, `node_modules`, вихідний код та service-токен метадані).
