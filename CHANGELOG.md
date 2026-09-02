@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.6
+
+- **GitHub Pages deploy fixed:** `pages.yml` тепер збирає фронтенд (`npm ci && npm run build`) і публікує лише `dist/` замість всього репозиторію (раніше у публічний доступ потрапляли `.git`, `node_modules`, вихідний код та service-токен метадані).
+- **Валідація шляху kubeconfig:** `add_cluster_config` перевіряє, що файл існує та є звичайним файлом; шлях канонізується (resolved symlinks) перед збереженням, що прибирає дублікати при додаванні через різні представлення одного файлу.
+- Додано `LICENSE` (MIT) — README-бейджі та посилання тепер валідні.
+- README: прибрано порожній `href=""` на Platform-бейджі та нерелевантний Rust-бейдж.
+
+## v0.2.5
+
+- Поточний стабільний реліз Windows (NSIS) з оновленим CI та auto-release.
+
 ## v0.2.2
 
 - **Виправлено Windows-збірку:** повернуто `bundle.targets = ["nsis"]` у `tauri.conf.json` (у v0.2.2/auto-release було створено хибне невалідне значення `"windows"`, яке ламало `cargo check`/`tauri build` і реліз).

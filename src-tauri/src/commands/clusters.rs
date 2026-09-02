@@ -99,17 +99,31 @@ pub fn add_cluster_config(
         .path()
         .app_config_dir()
         .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
+    // Validate the path before persisting anything.
+    let pb = std::path::PathBuf::from(&path);
+    let metadata =
+        std::fs::metadata(&pb).map_err(|e| format!("Kubeconfig path is not accessible: {e}"))?;
+    if !metadata.is_file() {
+        return Err(format!(
+            "Kubeconfig path is not a regular file: {}",
+            pb.display()
+        ));
+    }
+    let canonical = std::fs::canonicalize(&pb)
+        .map_err(|e| format!("Failed to resolve kubeconfig path: {e}"))?;
+    let canonical_str = canonical.to_string_lossy().into_owned();
+
     let mut stored = crate::kubeconfig::load_cluster_configs(&dir);
-    // Avoid duplicates by path.
+    // Avoid duplicates by canonical path.
     if stored
         .iter()
-        .any(|v| v.get("path").and_then(|p| p.as_str()) == Some(path.as_str()))
+        .any(|v| v.get("path").and_then(|p| p.as_str()) == Some(canonical_str.as_str()))
     {
         return manager.list_configs();
     }
     let id = Uuid::new_v4().to_string();
-    let name = default_config_name(&path);
-    stored.push(serde_json::json!({ "id": id, "name": name, "path": path }));
+    let name = default_config_name(&canonical_str);
+    stored.push(serde_json::json!({ "id": id, "name": name, "path": canonical_str }));
     // Auto-activate this config when no config is active yet, so its clusters
     // are immediately visible instead of showing an empty resource page.
     let mut active = crate::kubeconfig::load_active_config_id(&dir);

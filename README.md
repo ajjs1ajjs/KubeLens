@@ -21,8 +21,7 @@ Explore workloads, logs, metrics, Helm releases and dependency topology from one
 [![CI](https://img.shields.io/github/actions/workflow/status/ajjs1ajjs/KubeLens/ci.yml?branch=main&label=CI&logo=github)](https://github.com/ajjs1ajjs/KubeLens/actions)
 [![Release](https://img.shields.io/github/v/release/ajjs1ajjs/KubeLens?label=latest%20release&logo=semver)](https://github.com/ajjs1ajjs/KubeLens/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111827)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-00E5FF)](<>)
-[![Rust](https://img.shields.io/badge/Rust-stable-111827?logo=rust)](https://www.rust-lang.org/)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows)](https://www.microsoft.com/windows/)
 [![React](https://img.shields.io/badge/React-19-20232a?logo=react)](https://react.dev/)
 [![Tauri](https://img.shields.io/badge/Tauri-2-24c8db?logo=tauri)](https://tauri.app/)
 
