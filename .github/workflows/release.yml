@@ -84,7 +84,7 @@ jobs:
             "platforms": {
               "windows-x86_64": {
                 "signature": "",
-                "tauri": "https://github.com/ajjs1ajjs/KubeLens/releases/download/$TAG/$(basename $EXE)",
+                "url": "https://github.com/ajjs1ajjs/KubeLens/releases/download/$TAG/$(basename $EXE)",
                 "checksum": "sha256:$SHA"
               }
             }
