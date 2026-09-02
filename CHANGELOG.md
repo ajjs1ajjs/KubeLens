@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.11
+
+- **Signing key configured:** згенеровано нову Ed25519 пару ключів для підпису. `pubkey` оновлено в `tauri.conf.json`. Для підпису релізів потрібно додати `TAURI_SIGNING_PRIVATE_KEY` в GitHub Actions secrets.
+
 ## v0.2.9
 
 - **Updater manifest fix:** `latest.json` тепер використовує поле `url` замість `tauri` — Tauri updater plugin вимагає саме `url` для поля з URL інсталятора.
