@@ -61,20 +61,46 @@ jobs:
           fi
           echo "Version check passed: $VER"
 
-      - name: Build and upload release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri app
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Create clean latest.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -1)
+          echo "Found exe: $EXE"
+          TAG="${{ inputs.release_tag || github.ref_name }}"
+          VER="${TAG#v}"
+          SHA=$(sha256sum "$EXE" | cut -d' ' -f1)
+          echo "Version: $VER"
+          echo "SHA256: $SHA"
+          cat > latest.json << EOF
+          {
+            "version": "$VER",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "",
+                "tauri": "https://github.com/ajjs1ajjs/KubeLens/releases/download/$TAG/$(basename $EXE)",
+                "checksum": "sha256:$SHA"
+              }
+            }
+          }
+          EOF
+          cat latest.json
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          name: KubeLens ${{ inputs.release_tag || github.ref_name }}
+          body: |
+            See the [changelog](https://github.com/ajjs1ajjs/KubeLens/releases) for details.
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          owner: ajjs1ajjs
-          repo: KubeLens
-          tagName: ${{ inputs.release_tag || github.ref_name }}
-          releaseName: "KubeLens ${{ inputs.release_tag || github.ref_name }}"
-          releaseBody: |
-            See the [changelog](https://github.com/ajjs1ajjs/KubeLens/releases) for details.
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.args }}
-          createUpdaterArtifacts: false
