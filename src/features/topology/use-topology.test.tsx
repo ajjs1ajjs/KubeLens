@@ -80,4 +80,21 @@ describe("useTopology", () => {
     const { result } = renderHook(() => useTopology(null), { wrapper });
     expect(result.current.isFetching).toBe(false);
   });
+
+  it("keeps successful kinds when some list calls fail", async () => {
+    invokeMock.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === "list_resources") {
+        const kind = (args as { ctx?: ResourceContext }).ctx?.kind;
+        if (kind === "Service") return Promise.resolve([service]);
+        if (kind === "Deployment") return Promise.resolve([deployment]);
+        if (kind === "Ingress") return Promise.reject(new Error("forbidden"));
+        return Promise.resolve([]);
+      }
+      throw new Error(`unexpected invoke: ${cmd}`);
+    });
+
+    const { result } = renderHook(() => useTopology(ctx), { wrapper });
+    await waitFor(() => expect(result.current.graph.nodes.length).toBeGreaterThanOrEqual(2));
+    expect(result.current.isError).toBe(false);
+  });
 });

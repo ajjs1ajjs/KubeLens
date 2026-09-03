@@ -44,7 +44,10 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
       ? String(readPath(object, "/spec/containers/0/image"))
       : undefined;
   const containers = isPod ? podContainers(object) : [];
-  const resourceCtx = isPod && ctx ? { ...ctx, namespace: m.namespace ?? ctx.namespace } : null;
+  const resourceCtx = useMemo(
+    () => (isPod && ctx ? { ...ctx, namespace: m.namespace ?? ctx.namespace } : null),
+    [isPod, ctx, m.namespace],
+  );
 
   return (
     <div className="bg-background flex h-full flex-col border-l">
