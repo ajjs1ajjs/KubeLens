@@ -38,7 +38,17 @@ const service = {
 describe("resourceColumns", () => {
   it("defines pod columns", () => {
     const columns = resourceColumns("Pod");
-    expect(columns.map((c) => c.id)).toEqual(["name", "namespace", "ready", "status", "age"]);
+    expect(columns.map((c) => c.id)).toEqual([
+      "name",
+      "namespace",
+      "ready",
+      "status",
+      "restarts",
+      "controlled-by",
+      "node",
+      "qos",
+      "age",
+    ]);
   });
 
   it("renders pod status and readiness", () => {
@@ -53,6 +63,37 @@ describe("resourceColumns", () => {
     );
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("2/2")).toBeInTheDocument();
+  });
+
+  it("renders Lens-style Pod columns (restarts, controlled-by, node, qos)", () => {
+    const owned = {
+      metadata: {
+        name: "web-0",
+        namespace: "default",
+        creationTimestamp: "2026-01-01T00:00:00Z",
+        ownerReferences: [{ kind: "ReplicaSet", name: "web-abc" }],
+      },
+      spec: { nodeName: "k8s-dev-wr" },
+      status: {
+        phase: "Running",
+        containerStatuses: [{ ready: true, restartCount: 7 }],
+        qosClass: "Burstable",
+      },
+    };
+    const columns = resourceColumns("Pod");
+    const find = (id: string) => columns.find((c) => c.id === id)!.cell;
+    render(
+      <>
+        {find("restarts")(owned)}
+        {find("controlled-by")(owned)}
+        {find("node")(owned)}
+        {find("qos")(owned)}
+      </>,
+    );
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText("ReplicaSet/web-abc")).toBeInTheDocument();
+    expect(screen.getByText("k8s-dev-wr")).toBeInTheDocument();
+    expect(screen.getByText("Burstable")).toBeInTheDocument();
   });
 
   it("renders deployment replica summary", () => {

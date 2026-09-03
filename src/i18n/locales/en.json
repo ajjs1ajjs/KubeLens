@@ -129,7 +129,45 @@
       "address": "Address",
       "cpu": "CPU",
       "memory": "Memory",
-      "completions": "Completions"
+      "completions": "Completions",
+      "containers": "Containers",
+      "container": "Container",
+      "restarts": "Restarts",
+      "controlledBy": "Controlled By",
+      "node": "Node",
+      "qos": "QoS"
+    },
+    "actions": {
+      "viewYaml": "View YAML",
+      "edit": "Edit",
+      "delete": "Delete",
+      "logs": "Logs",
+      "exec": "Exec",
+      "portForward": "Port Forward",
+      "restart": "Restart",
+      "scale": "Scale",
+      "more": "More actions"
+    },
+    "scale": {
+      "title": "Scale {{kind}}",
+      "description": "Set the desired replica count for {{name}}.",
+      "replicas": "Replicas",
+      "apply": "Scale",
+      "invalid": "Replicas must be a non-negative integer."
+    },
+    "restart": {
+      "title": "Restart {{kind}}",
+      "description": "Restart will delete all pods owned by {{name}}. The controller will recreate them.",
+      "confirm": "Restart"
+    },
+    "yaml": {
+      "viewTitle": "View {{name}}",
+      "editTitle": "Edit {{name}}",
+      "createTitle": "Create {{label}}",
+      "description": "Apply changes to update this resource in the cluster.",
+      "createDescription": "Apply a new {{label}} manifest.",
+      "reset": "Reset",
+      "applied": "Manifest applied"
     },
     "detail": {
       "phase": "Phase",
@@ -187,7 +225,9 @@
       "manifestApplied": "Manifest applied",
       "portForwarded": "Port {{port}} forwarded",
       "portForwardStopped": "Port forward stopped",
-      "releaseUninstalled": "Release \"{{name}}\" uninstalled"
+      "releaseUninstalled": "Release \"{{name}}\" uninstalled",
+      "scaled": "Scaled to {{replicas}} replicas",
+      "restartRequested": "Restart requested"
     }
   },
   "helm": {

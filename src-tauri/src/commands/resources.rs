@@ -44,6 +44,27 @@ pub async fn apply_yaml(
     resources::apply_yaml(&manager, &ctx, &yaml).await
 }
 
+/// Scales a workload to the given replica count.
+#[tauri::command]
+pub async fn scale_resource(
+    manager: State<'_, ClusterManager>,
+    ctx: ResourceContext,
+    name: String,
+    replicas: i32,
+) -> Result<(), String> {
+    resources::scale(&manager, &ctx, &name, replicas).await
+}
+
+/// Triggers a rolling restart by patching a restart annotation.
+#[tauri::command]
+pub async fn restart_resource(
+    manager: State<'_, ClusterManager>,
+    ctx: ResourceContext,
+    name: String,
+) -> Result<(), String> {
+    resources::restart(&manager, &ctx, &name).await
+}
+
 /// Starts a watch subscription for a resource context, returning its id.
 #[tauri::command]
 pub async fn start_watch(

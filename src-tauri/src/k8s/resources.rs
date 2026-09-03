@@ -139,6 +139,84 @@ fn kube_error(err: kube::Error) -> String {
     format!("Kubernetes API error: {err}")
 }
 
+/// Patches `spec.replicas` on a scalable workload (Deployment, StatefulSet,
+/// ReplicaSet) using a strategic merge patch.
+pub async fn scale(
+    manager: &ClusterManager,
+    ctx: &ResourceContext,
+    name: &str,
+    replicas: i32,
+) -> Result<(), String> {
+    if replicas < 0 {
+        return Err("Replicas must be a non-negative integer".to_string());
+    }
+    let client = manager.client_ctx(ctx).await?;
+    let api = api(&client, ctx);
+    let body = serde_json::json!({ "spec": { "replicas": replicas } });
+    let patch = Patch::Merge(&body);
+    let params = PatchParams::default();
+    api.patch(name, &params, &patch).await.map_err(kube_error)?;
+    Ok(())
+}
+
+/// Triggers a rollout restart by patching an annotation on the pod template.
+/// For Deployments/StatefulSets/DaemonSets, the controller recreates pods on
+/// the next reconciliation when the annotation changes.
+pub async fn restart(
+    manager: &ClusterManager,
+    ctx: &ResourceContext,
+    name: &str,
+) -> Result<(), String> {
+    let client = manager.client_ctx(ctx).await?;
+    let api = api(&client, ctx);
+    let now = chrono_now();
+    let body = match ctx.kind.as_str() {
+        "Deployment" | "StatefulSet" | "DaemonSet" => serde_json::json!({
+            "spec": {
+                "template": {
+                    "metadata": {
+                        "annotations": {
+                            "kubectl.kubernetes.io/restartedAt": now
+                        }
+                    }
+                }
+            }
+        }),
+        "CronJob" => serde_json::json!({
+            "spec": {
+                "jobTemplate": {
+                    "spec": {
+                        "template": {
+                            "metadata": {
+                                "annotations": {
+                                    "kubectl.kubernetes.io/restartedAt": now
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }),
+        _ => {
+            return Err(format!(
+                "Restart is not supported for kind {}. Delete and recreate it manually.",
+                ctx.kind
+            ));
+        }
+    };
+    let patch = Patch::Merge(&body);
+    let params = PatchParams::default();
+    api.patch(name, &params, &patch).await.map_err(kube_error)?;
+    Ok(())
+}
+
+fn chrono_now() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs().to_string())
+        .unwrap_or_else(|_| "0".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::k8s::mock_api;
@@ -229,5 +307,17 @@ spec:
             err.contains("Manifest is missing"),
             "unexpected error: {err}"
         );
+    }
+
+    #[tokio::test]
+    async fn rejects_negative_replica_count() {
+        let server = mock_api::MockApiServer::start().await;
+        let manager = manager_with_mock(&server).await;
+        let ctx = pod_ctx();
+
+        let err = resources::scale(&manager, &ctx, "pod-a", -1)
+            .await
+            .expect_err("negative replicas");
+        assert!(err.contains("non-negative"), "unexpected error: {err}");
     }
 }

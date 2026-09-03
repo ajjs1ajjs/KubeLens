@@ -129,7 +129,45 @@
       "address": "Адреса",
       "cpu": "CPU",
       "memory": "Пам'ять",
-      "completions": "Завершень"
+      "completions": "Завершень",
+      "containers": "Контейнери",
+      "container": "Контейнер",
+      "restarts": "Перезапуски",
+      "controlledBy": "Ким керується",
+      "node": "Вузол",
+      "qos": "QoS"
+    },
+    "actions": {
+      "viewYaml": "Переглянути YAML",
+      "edit": "Редагувати",
+      "delete": "Видалити",
+      "logs": "Логи",
+      "exec": "Exec",
+      "portForward": "Port Forward",
+      "restart": "Перезапустити",
+      "scale": "Масштабувати",
+      "more": "Більше дій"
+    },
+    "scale": {
+      "title": "Масштабувати {{kind}}",
+      "description": "Встановіть бажану кількість реплік для {{name}}.",
+      "replicas": "Репліки",
+      "apply": "Масштабувати",
+      "invalid": "Кількість реплік має бути невід'ємним цілим числом."
+    },
+    "restart": {
+      "title": "Перезапустити {{kind}}",
+      "description": "Перезапуск видалить усі поди, що належать {{name}}. Контролер створить їх заново.",
+      "confirm": "Перезапустити"
+    },
+    "yaml": {
+      "viewTitle": "Перегляд {{name}}",
+      "editTitle": "Редагувати {{name}}",
+      "createTitle": "Створити {{label}}",
+      "description": "Застосуйте зміни, щоб оновити цей ресурс у кластері.",
+      "createDescription": "Застосувати новий маніфест {{label}}.",
+      "reset": "Скинути",
+      "applied": "Маніфест застосовано"
     },
     "detail": {
       "phase": "Фаза",
@@ -187,7 +225,9 @@
       "manifestApplied": "Маніфест застосовано",
       "portForwarded": "Порт {{port}} проброшено",
       "portForwardStopped": "Port forward зупинено",
-      "releaseUninstalled": "Реліз \"{{name}}\" видалено"
+      "releaseUninstalled": "Реліз \"{{name}}\" видалено",
+      "scaled": "Масштабовано до {{replicas}} реплік",
+      "restartRequested": "Перезапуск ініційовано"
     }
   },
   "helm": {

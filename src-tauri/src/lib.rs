@@ -50,6 +50,8 @@ pub fn run() {
             commands::resources::get_resource,
             commands::resources::delete_resource,
             commands::resources::apply_yaml,
+            commands::resources::scale_resource,
+            commands::resources::restart_resource,
             commands::resources::start_watch,
             commands::resources::stop_watch,
             commands::resources::list_namespaces,

@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveCluster, useClusterStore } from "@/features/clusters/cluster-store";
 import { DeleteConfirmDialog } from "@/features/resources/DeleteConfirmDialog";
-import { ManifestDialog } from "@/features/resources/ManifestDialog";
+import { ManifestSheet } from "@/features/resources/ManifestSheet";
 import { manifestFromObject, manifestTemplate } from "@/features/resources/manifest";
 import { findResourceType, resourceApiVersion } from "@/features/resources/resource-types";
 import { ResourceDetail } from "@/features/resources/ResourceDetail";
 import { ResourceTable } from "@/features/resources/ResourceTable";
+import { RestartConfirmDialog } from "@/features/resources/RestartConfirmDialog";
+import { ScaleDialog } from "@/features/resources/ScaleDialog";
 import { useResourceActions } from "@/features/resources/use-resource-actions";
 import { useResourceList } from "@/features/resources/use-resource-list";
 import {
@@ -19,7 +21,7 @@ import {
   useNodeMetrics,
   usePodMetrics,
 } from "@/features/resources/use-metrics";
-import { meta as objectMeta } from "@/lib/k8s/object";
+import { meta as objectMeta, readPath } from "@/lib/k8s/object";
 import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
 import { ResizablePanel } from "@/components/ui/resizable";
 
@@ -33,7 +35,10 @@ export function ResourcePage() {
   const [selected, setSelected] = useState<K8sObject | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editObject, setEditObject] = useState<K8sObject | null>(null);
+  const [viewObject, setViewObject] = useState<K8sObject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<K8sObject | null>(null);
+  const [scaleTarget, setScaleTarget] = useState<K8sObject | null>(null);
+  const [restartTarget, setRestartTarget] = useState<K8sObject | null>(null);
   const contextName = activeCluster?.name;
   const configId = activeCluster?.configId;
 
@@ -52,7 +57,7 @@ export function ResourcePage() {
 
   const { data, isPending, isError, error, watch } = useResourceList(ctx);
   const objects = data ?? [];
-  const { remove, apply } = useResourceActions(ctx);
+  const { remove, apply, scale, restart } = useResourceActions(ctx);
 
   const podMetrics = usePodMetrics(kind === "Pod" ? ctx : null);
   const nodeMetrics = useNodeMetrics(kind === "Node" ? ctx : null);
@@ -72,6 +77,7 @@ export function ResourcePage() {
     [meta, ctx],
   );
   const editValue = useMemo(() => (editObject ? manifestFromObject(editObject) : ""), [editObject]);
+  const viewValue = useMemo(() => (viewObject ? manifestFromObject(viewObject) : ""), [viewObject]);
 
   const handleDelete = () => {
     if (!deleteTarget) return;
@@ -82,6 +88,26 @@ export function ResourcePage() {
         if (selected && objectMeta(selected).name === name) setSelected(null);
       },
     });
+  };
+
+  const handleScale = (replicas: number) => {
+    if (!scaleTarget) return;
+    scale.mutate(
+      { name: objectMeta(scaleTarget).name, replicas },
+      { onSuccess: () => setScaleTarget(null) },
+    );
+  };
+
+  const handleRestart = () => {
+    if (!restartTarget) return;
+    restart.mutate(objectMeta(restartTarget).name, {
+      onSuccess: () => setRestartTarget(null),
+    });
+  };
+
+  const scaleReplicas = (object: K8sObject): number => {
+    const raw = readPath(object, "/spec/replicas");
+    return typeof raw === "number" ? raw : 1;
   };
 
   if (!activeCluster) {
@@ -144,8 +170,16 @@ export function ResourcePage() {
               showNamespace={Boolean(meta?.namespaced) && activeNamespace === ""}
               metrics={metrics}
               onSelect={setSelected}
-              onEdit={setEditObject}
-              onDelete={setDeleteTarget}
+              actions={{
+                onViewYaml: setViewObject,
+                onEdit: setEditObject,
+                onDelete: setDeleteTarget,
+                onLogs: (o) => setSelected(o),
+                onExec: (o) => setSelected(o),
+                onPortForward: (o) => setSelected(o),
+                onScale: setScaleTarget,
+                onRestart: setRestartTarget,
+              }}
             />
           )}
         </div>
@@ -162,11 +196,11 @@ export function ResourcePage() {
         )}
       </div>
 
-      <ManifestDialog
+      <ManifestSheet
         open={createOpen}
         onOpenChange={setCreateOpen}
-        title={t("resources.page.createTitle", { label: meta?.label ?? kind })}
-        description={t("resources.page.createDescription", {
+        title={t("resources.yaml.createTitle", { label: meta?.label ?? kind })}
+        description={t("resources.yaml.createDescription", {
           label: meta?.label?.toLowerCase() ?? kind,
         })}
         initialValue={createTemplate}
@@ -175,17 +209,46 @@ export function ResourcePage() {
         onSubmit={(yaml) => apply.mutate(yaml, { onSuccess: () => setCreateOpen(false) })}
       />
 
-      <ManifestDialog
+      <ManifestSheet
         open={editObject !== null}
         onOpenChange={(open) => !open && setEditObject(null)}
-        title={t("resources.page.editTitle", {
+        title={t("resources.yaml.editTitle", {
           name: editObject ? objectMeta(editObject).name : "",
         })}
-        description={t("resources.page.editDescription")}
+        description={t("resources.yaml.description")}
         initialValue={editValue}
         submitLabel="Save"
         isSubmitting={apply.isPending}
         onSubmit={(yaml) => apply.mutate(yaml, { onSuccess: () => setEditObject(null) })}
+      />
+
+      <ManifestSheet
+        open={viewObject !== null}
+        onOpenChange={(open) => !open && setViewObject(null)}
+        title={t("resources.yaml.viewTitle", {
+          name: viewObject ? objectMeta(viewObject).name : "",
+        })}
+        initialValue={viewValue}
+        readOnly
+      />
+
+      <ScaleDialog
+        open={scaleTarget !== null}
+        onOpenChange={(open) => !open && setScaleTarget(null)}
+        kind={kind ?? "Resource"}
+        name={scaleTarget ? objectMeta(scaleTarget).name : ""}
+        initialReplicas={scaleTarget ? scaleReplicas(scaleTarget) : 1}
+        isSubmitting={scale.isPending}
+        onSubmit={handleScale}
+      />
+
+      <RestartConfirmDialog
+        open={restartTarget !== null}
+        onOpenChange={(open) => !open && setRestartTarget(null)}
+        kind={kind ?? "Resource"}
+        name={restartTarget ? objectMeta(restartTarget).name : ""}
+        isSubmitting={restart.isPending}
+        onConfirm={handleRestart}
       />
 
       <DeleteConfirmDialog

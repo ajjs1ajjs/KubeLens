@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.0
+
+- **Lens-style Pod table:** new columns Restarts, Controlled By, Node, QoS alongside the existing Name, Namespace, Ready, Status, CPU, Memory, Age. QoS is color-coded (Guaranteed/Burstable/BestEffort).
+- **Lens-style row actions menu:** the trailing `⋯` icon on every row opens a context menu with kind-aware actions: View YAML / Edit / Delete for everything; **Logs**, **Exec**, **Port Forward** for Pod; **Scale** for Deployment/StatefulSet/ReplicaSet; **Restart** for Deployment/StatefulSet/DaemonSet/CronJob.
+- **Side-panel YAML editor:** create, edit and view manifests now live in a right-side Sheet (wider than the previous modal) with a Reset button and a dedicated read-only view mode.
+- **New Tauri commands:** `scale_resource` (PATCH `/spec/replicas`) and `restart_resource` (PATCH `kubectl.kubernetes.io/restartedAt` annotation). Negative replica counts are rejected.
+
 ## v0.2.12
 
 - **Release pipeline fixed:** the v0.2.12 release workflow no longer hard-fails when the `TAURI_SIGNING_PRIVATE_KEY` GitHub Secret cannot be decoded by the Tauri CLI. The build now disables `createUpdaterArtifacts`, signs the installer manually with `tauri signer sign`, and falls back to an unsigned `latest.json` with a clear warning if signing fails. This allows the installer to ship while the in-app updater is regenerated.

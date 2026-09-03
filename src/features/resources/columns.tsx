@@ -91,6 +91,44 @@ function PodReady({ obj }: { obj: K8sObject }) {
   );
 }
 
+function RestartsCell({ obj }: { obj: K8sObject }) {
+  const { restarts } = podSummary(obj);
+  if (restarts === undefined || restarts === 0)
+    return <span className="text-muted-foreground">0</span>;
+  return (
+    <span
+      className={restarts > 5 ? "text-amber-600 tabular-nums dark:text-amber-400" : "tabular-nums"}
+    >
+      {restarts}
+    </span>
+  );
+}
+
+function ControlledByCell({ obj }: { obj: K8sObject }) {
+  const refs = readPath(obj, "/metadata/ownerReferences");
+  if (!Array.isArray(refs) || refs.length === 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  const first = refs[0] as Record<string, unknown>;
+  const kind = typeof first.kind === "string" ? first.kind : "Owner";
+  const name = typeof first.name === "string" ? first.name : "";
+  return <span className="text-muted-foreground">{name ? `${kind}/${name}` : kind}</span>;
+}
+
+function NodeCell({ obj }: { obj: K8sObject }) {
+  const node = readPath(obj, "/spec/nodeName");
+  if (typeof node !== "string" || node === "")
+    return <span className="text-muted-foreground">—</span>;
+  return <span className="text-muted-foreground">{node}</span>;
+}
+
+function QosCell({ obj }: { obj: K8sObject }) {
+  const qos = readPath(obj, "/status/qosClass");
+  if (typeof qos !== "string") return <span className="text-muted-foreground">—</span>;
+  const tone = qos === "Guaranteed" ? "green" : qos === "Burstable" ? "yellow" : "gray";
+  return <StatusBadge value={qos} tone={tone} />;
+}
+
 function NodeStatus({ obj }: { obj: K8sObject }) {
   const ready = nodeReady(obj);
   if (ready === undefined) return <span className="text-muted-foreground">—</span>;
@@ -190,6 +228,18 @@ export function resourceColumns(
         namespace,
         { id: "ready", header: tr("resources.columns.ready"), cell: (o) => <PodReady obj={o} /> },
         { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
+        {
+          id: "restarts",
+          header: tr("resources.columns.restarts"),
+          cell: (o) => <RestartsCell obj={o} />,
+        },
+        {
+          id: "controlled-by",
+          header: tr("resources.columns.controlledBy"),
+          cell: (o) => <ControlledByCell obj={o} />,
+        },
+        { id: "node", header: tr("resources.columns.node"), cell: (o) => <NodeCell obj={o} /> },
+        { id: "qos", header: tr("resources.columns.qos"), cell: (o) => <QosCell obj={o} /> },
         ...(metrics ? metricColumns(metrics, tr) : []),
         age,
       ];

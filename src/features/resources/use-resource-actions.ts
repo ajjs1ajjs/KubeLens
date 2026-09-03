@@ -41,5 +41,29 @@ export function useResourceActions(ctx: ResourceContext | null) {
     onError: (error: unknown) => toast.error(String(error)),
   });
 
-  return { remove, apply };
+  const scale = useMutation({
+    mutationFn: (input: { name: string; replicas: number }) => {
+      if (!ctx) throw new Error("No resource context");
+      return k8sApi.scaleResource(ctx, input.name, input.replicas);
+    },
+    onSuccess: () => {
+      toast.success(i18n.t("resources.toasts.scaled"));
+      invalidate();
+    },
+    onError: (error: unknown) => toast.error(String(error)),
+  });
+
+  const restart = useMutation({
+    mutationFn: (name: string) => {
+      if (!ctx) throw new Error("No resource context");
+      return k8sApi.restartResource(ctx, name);
+    },
+    onSuccess: () => {
+      toast.success(i18n.t("resources.toasts.restartRequested"));
+      invalidate();
+    },
+    onError: (error: unknown) => toast.error(String(error)),
+  });
+
+  return { remove, apply, scale, restart };
 }

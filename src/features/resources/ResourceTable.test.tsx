@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ResourceTable } from "./ResourceTable";
@@ -41,5 +41,25 @@ describe("ResourceTable", () => {
   it("shows empty state when there are no objects", () => {
     render(<ResourceTable kind="Pod" objects={[]} showNamespace={false} onSelect={() => {}} />);
     expect(screen.getByText("No pod found.")).toBeInTheDocument();
+  });
+
+  it("renders the action menu and exposes delete", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(
+      <ResourceTable
+        kind="Pod"
+        objects={pods}
+        showNamespace={false}
+        onSelect={() => {}}
+        actions={{ onDelete }}
+      />,
+    );
+
+    const trigger = screen.getAllByRole("button", { name: /Actions for/ })[0];
+    await user.click(trigger);
+    const deleteItem = await screen.findByText("Delete");
+    await user.click(deleteItem);
+    expect(onDelete).toHaveBeenCalledWith(pods[0]);
   });
 });

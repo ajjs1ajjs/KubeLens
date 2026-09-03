@@ -62,6 +62,12 @@ export const k8sApi = {
 
   applyYaml: (ctx: ResourceContext, yaml: string) => invoke<K8sObject>("apply_yaml", { ctx, yaml }),
 
+  scaleResource: (ctx: ResourceContext, name: string, replicas: number) =>
+    invoke<void>("scale_resource", { ctx, name, replicas }),
+
+  restartResource: (ctx: ResourceContext, name: string) =>
+    invoke<void>("restart_resource", { ctx, name }),
+
   startWatch: (ctx: ResourceContext) => invoke<string>("start_watch", { ctx }),
 
   stopWatch: (id: string) => invoke<void>("stop_watch", { id }),

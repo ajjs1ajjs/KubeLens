@@ -7,11 +7,11 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Pencil, Search, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useResourceColumns, type MetricsLookup } from "./columns";
 import { meta } from "@/lib/k8s/object";
+import { RowActionsMenu, type RowActions } from "./RowActionsMenu";
 import type { K8sObject } from "@/lib/k8s/types";
 
 interface ResourceTableProps {
@@ -22,8 +22,7 @@ interface ResourceTableProps {
   /** Optional CPU/RAM metrics for Pod/Node rows. */
   metrics?: MetricsLookup;
   onSelect: (object: K8sObject) => void;
-  onEdit?: (object: K8sObject) => void;
-  onDelete?: (object: K8sObject) => void;
+  actions?: RowActions;
 }
 
 export function ResourceTable({
@@ -32,8 +31,7 @@ export function ResourceTable({
   showNamespace,
   metrics,
   onSelect,
-  onEdit,
-  onDelete,
+  actions,
 }: ResourceTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [query, setQuery] = useState("");
@@ -49,48 +47,22 @@ export function ResourceTable({
       cell: ({ row }) => c.cell(row.original),
     }));
 
-    if (onEdit || onDelete) {
+    if (actions && Object.values(actions).some(Boolean)) {
       cols.push({
         id: "actions",
         header: "",
         accessorKey: undefined,
         enableSorting: false,
-        cell: ({ row }) => {
-          const object = row.original;
-          return (
-            <div
-              className="flex items-center justify-end gap-0.5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {onEdit && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Edit ${meta(object).name}`}
-                  onClick={() => onEdit(object)}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              )}
-              {onDelete && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${meta(object).name}`}
-                  className="text-destructive"
-                  onClick={() => onDelete(object)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+            <RowActionsMenu object={row.original} kind={kind} actions={actions} />
+          </div>
+        ),
       });
     }
 
     return cols;
-  }, [config, showNamespace, onEdit, onDelete]);
+  }, [config, showNamespace, actions, kind]);
 
   const table = useReactTable({
     data: objects,
