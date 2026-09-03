@@ -100,7 +100,6 @@ jobs:
       - name: Sign installer and create latest.json
         shell: bash
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
@@ -114,7 +113,10 @@ jobs:
           VER="${TAG#v}"
 
           # Sign the installer. The signer writes the base64 signature to
-          # `<file>.sig` next to the input file.
+          # `<file>.sig` next to the input file. Pass the password via env
+          # (read by the CLI) and the key via --private-key-path; do NOT
+          # also set TAURI_SIGNING_PRIVATE_KEY — it would collide with the
+          # path flag and cause "cannot be used with --private-key".
           npx tauri signer sign --private-key-path privkey.txt "$EXE"
           SIG_FILE="${EXE}.sig"
           if [ ! -f "$SIG_FILE" ]; then
