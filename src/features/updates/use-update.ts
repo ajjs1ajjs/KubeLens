@@ -102,8 +102,8 @@ export function useUpdate(): UseUpdateResult {
   }, []);
 
   const openReleasePage = useCallback(async () => {
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(releaseUrlFor(version));
+    const { open } = await import("@tauri-apps/plugin-shell");
+    await open(releaseUrlFor(version));
   }, [version]);
 
   const dismiss = useCallback(() => {
