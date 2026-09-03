@@ -51,9 +51,7 @@ export function useTopology(ctx: ResourceContext | null) {
       const contexts = contextsFor(ctx as ResourceContext);
       // Use allSettled so a single failing kind (e.g. RBAC on a custom
       // resource, or a missing CRD) does not blank the entire graph.
-      const results = await Promise.allSettled(
-        contexts.map((c) => k8sApi.listResources(c)),
-      );
+      const results = await Promise.allSettled(contexts.map((c) => k8sApi.listResources(c)));
       return results.flatMap((r) => (r.status === "fulfilled" ? r.value : [])) as K8sObject[];
     },
     enabled: Boolean(ctx),
