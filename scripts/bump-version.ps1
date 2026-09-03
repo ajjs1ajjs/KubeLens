@@ -45,7 +45,10 @@ Write-Host "Verified versions in sync: $Version"
 
 # --- tag ---
 $tag = "v$Version"
-git add -A
+# Stage only the three manifest files explicitly — never `git add -A`, which
+# can sweep up untracked secrets (e.g. Tauri signing keys in privkey.txt) that
+# are not yet covered by .gitignore.
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
 git commit -m "chore: release $tag"
 git tag $tag
 
