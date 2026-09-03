@@ -33,9 +33,14 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
   const [portForwardOpen, setPortForwardOpen] = useState(false);
   const raw = useMemo(() => (object ? JSON.stringify(object, null, 2) : ""), [object]);
 
-  if (!object) return null;
-  const m = meta(object);
+  const m = object ? meta(object) : null;
   const isPod = kind === "Pod";
+  const resourceCtx = useMemo(
+    () => (isPod && ctx && m ? { ...ctx, namespace: m.namespace ?? ctx.namespace } : null),
+    [isPod, ctx, m],
+  );
+
+  if (!object || !m) return null;
   const phase = readPath(object, "/status/phase");
   const replicas = readyReplicas(object);
   const pod = podSummary(object);
@@ -44,10 +49,6 @@ export function ResourceDetail({ kind, object, ctx, onOpenChange }: ResourceDeta
       ? String(readPath(object, "/spec/containers/0/image"))
       : undefined;
   const containers = isPod ? podContainers(object) : [];
-  const resourceCtx = useMemo(
-    () => (isPod && ctx ? { ...ctx, namespace: m.namespace ?? ctx.namespace } : null),
-    [isPod, ctx, m.namespace],
-  );
 
   return (
     <div className="bg-background flex h-full flex-col border-l">
