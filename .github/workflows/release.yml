@@ -62,8 +62,6 @@ jobs:
           echo "Version check passed: $VER"
 
       - name: Prepare signing key file
-        # Write the GitHub Secret (minisign-format key) to privkey.txt for signing.
-        # The secret must contain the full minisign key including headers.
         if: ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
