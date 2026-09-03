@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY" > privkey.txt
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > privkey.txt
           echo "Loaded signing key: $(wc -c < privkey.txt) bytes"
 
       - name: Disable updater artifacts for build (signed manually below)
