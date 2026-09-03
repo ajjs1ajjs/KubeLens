@@ -102,8 +102,14 @@ export function useUpdate(): UseUpdateResult {
   }, []);
 
   const openReleasePage = useCallback(async () => {
-    const { open } = await import("@tauri-apps/plugin-shell");
-    await open(releaseUrlFor(version));
+    const url = releaseUrlFor(version);
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(url);
+    } catch {
+      const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
+      await writeText(url);
+    }
   }, [version]);
 
   const dismiss = useCallback(() => {
