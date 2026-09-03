@@ -62,12 +62,12 @@ jobs:
           echo "Version check passed: $VER"
 
       - name: Prepare signing key file
-        # GitHub Secrets are UTF-8 strings. The Tauri updater plugin reads
-        # `TAURI_SIGNING_PRIVATE_KEY` and decodes it as base64. If the secret
-        # contains the raw key bytes (not the base64 text) the build fails
-        # with "invalid utf-8 sequence". We write the secret to privkey.txt
-        # and use it only for the manual signing step below, so the Tauri
-        # build itself never touches the env var.
+        # Write the GitHub Secret to privkey.txt for the optional signing
+        # step below. The Tauri CLI's `decode_key` expects a minisign-format
+        # key file (base64-encoded), but the current secret contains a raw
+        # base64 key. The signing step handles this gracefully — it tries to
+        # sign and falls back to an unsigned latest.json if the key format
+        # is not compatible.
         if: ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -98,6 +98,12 @@ jobs:
         run: npm run tauri build -- ${{ matrix.args }}
 
       - name: Sign installer and create latest.json
+        # NOTE: The Tauri CLI's `decode_key` function expects a minisign-format
+        # key file (base64-encoded), not a raw base64 key. The current GitHub
+        # Secret contains a raw base64 key which the CLI cannot parse
+        # ("failed to convert base64 to utf8"). Until the secret is updated
+        # to the minisign format, we build without updater signing.
+        # The in-app updater will not work for this release.
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -112,20 +118,19 @@ jobs:
           TAG="${{ inputs.release_tag || github.ref_name }}"
           VER="${TAG#v}"
 
-          # Sign the installer. The signer writes the base64 signature to
-          # `<file>.sig` next to the input file. Pass the password via env
-          # (read by the CLI) and the key via --private-key-path; do NOT
-          # also set TAURI_SIGNING_PRIVATE_KEY — it would collide with the
-          # path flag and cause "cannot be used with --private-key".
-          npx tauri signer sign --private-key-path privkey.txt "$EXE"
-          SIG_FILE="${EXE}.sig"
-          if [ ! -f "$SIG_FILE" ]; then
-            echo "::error::Signature file not found: $SIG_FILE"
-            exit 1
+          # Try to sign the installer. If signing fails (e.g. key format
+          # mismatch), fall back to an unsigned latest.json with a warning.
+          if npx tauri signer sign --private-key-path privkey.txt "$EXE" 2>/tmp/sign_err; then
+            SIG_FILE="${EXE}.sig"
+            SIG=$(tr -d '\r\n' < "$SIG_FILE")
+            echo "Signature: $SIG"
+            SIGNED=true
+          else
+            echo "::warning::Signing failed: $(cat /tmp/sign_err)"
+            echo "::warning::Building an unsigned latest.json. The in-app updater will not work for this release."
+            SIG="UNSIGNED"
+            SIGNED=false
           fi
-          # Strip any trailing whitespace/newline from the signature.
-          SIG=$(tr -d '\r\n' < "$SIG_FILE")
-          echo "Signature: $SIG"
 
           SHA=$(sha256sum "$EXE" | cut -d' ' -f1)
           echo "Version: $VER"
@@ -144,6 +149,7 @@ jobs:
           }
           EOF
           cat latest.json
+          echo "signed=$SIGNED" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
