@@ -276,9 +276,11 @@
   },
   "updates": {
     "checking": "Перевірка оновлень…",
-    "available": "Доступна версія KubeLens {{version}}",
+    "available": "KubeLens {{version}} доступний",
     "downloading": "Завантаження оновлення…",
-    "downloadingProgress": "Завантаження оновлення… {{progress}}%"
+    "downloadingProgress": "Завантаження оновлення… {{progress}}%",
+    "downloadOnGithub": "Завантажити з GitHub",
+    "openReleasePage": "Відкрити сторінку релізу на GitHub"
   },
   "header": {
     "noCluster": "Кластер не підключено",

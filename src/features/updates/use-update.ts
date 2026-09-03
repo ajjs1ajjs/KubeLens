@@ -11,7 +11,14 @@ export interface UseUpdateResult {
   progress: number | null;
   checkForUpdates: () => Promise<void>;
   installUpdate: () => Promise<void>;
+  openReleasePage: () => Promise<void>;
   dismiss: () => void;
+}
+
+const RELEASES_PAGE = "https://github.com/ajjs1ajjs/KubeLens/releases";
+
+function releaseUrlFor(version: string | null): string {
+  return version ? `${RELEASES_PAGE}/tag/v${version}` : RELEASES_PAGE;
 }
 
 /**
@@ -89,10 +96,15 @@ export function useUpdate(): UseUpdateResult {
       setStatus("idle");
     } catch (err) {
       setError(String(err));
-      setStatus("available");
+      setStatus("error");
       setProgress(null);
     }
   }, []);
+
+  const openReleasePage = useCallback(async () => {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(releaseUrlFor(version));
+  }, [version]);
 
   const dismiss = useCallback(() => {
     setStatus("idle");
@@ -100,5 +112,14 @@ export function useUpdate(): UseUpdateResult {
     setProgress(null);
   }, []);
 
-  return { status, version, error, progress, checkForUpdates, installUpdate, dismiss };
+  return {
+    status,
+    version,
+    error,
+    progress,
+    checkForUpdates,
+    installUpdate,
+    openReleasePage,
+    dismiss,
+  };
 }

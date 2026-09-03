@@ -5,6 +5,7 @@ import { useClusterStore } from "@/features/clusters/cluster-store";
 
 const mockCheck = vi.fn();
 const mockDownloadAndInstall = vi.fn();
+const mockOpenUrl = vi.fn();
 
 vi.mock("@tauri-apps/plugin-updater", () => ({
   check: () => mockCheck(),
@@ -12,6 +13,10 @@ vi.mock("@tauri-apps/plugin-updater", () => ({
     version = "0.2.0";
     downloadAndInstall = () => mockDownloadAndInstall();
   },
+}));
+
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openUrl: (url: string) => mockOpenUrl(url),
 }));
 
 function withConnectedCluster(connected: boolean) {
@@ -35,6 +40,7 @@ describe("useUpdate", () => {
   beforeEach(() => {
     mockCheck.mockReset();
     mockDownloadAndInstall.mockReset();
+    mockOpenUrl.mockReset();
     useClusterStore.setState({ clusters: [], activeClusterId: null });
   });
 
@@ -85,5 +91,40 @@ describe("useUpdate", () => {
     const { result } = renderHook(() => useUpdate());
     await waitFor(() => expect(result.current.status).toBe("error"));
     expect(result.current.error).toContain("offline");
+  });
+
+  it("surfaces signature-verification failures as an error instead of silently reverting", async () => {
+    withConnectedCluster(true);
+    mockCheck.mockResolvedValue({
+      version: "0.3.0",
+      downloadAndInstall: mockDownloadAndInstall,
+    });
+    mockDownloadAndInstall.mockRejectedValue(new Error("invalid signature"));
+
+    const { result } = renderHook(() => useUpdate());
+    await waitFor(() => expect(result.current.status).toBe("available"));
+
+    await act(async () => {
+      await result.current.installUpdate();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.error).toContain("invalid signature");
+  });
+
+  it("opens the release page on GitHub for the detected version", async () => {
+    withConnectedCluster(true);
+    mockCheck.mockResolvedValue({ version: "0.3.0" });
+
+    const { result } = renderHook(() => useUpdate());
+    await waitFor(() => expect(result.current.status).toBe("available"));
+
+    await act(async () => {
+      await result.current.openReleasePage();
+    });
+
+    expect(mockOpenUrl).toHaveBeenCalledWith(
+      "https://github.com/ajjs1ajjs/KubeLens/releases/tag/v0.3.0",
+    );
   });
 });
