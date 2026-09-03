@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.12
+
+- **Release pipeline fixed:** the v0.2.12 release workflow no longer hard-fails when the `TAURI_SIGNING_PRIVATE_KEY` GitHub Secret cannot be decoded by the Tauri CLI. The build now disables `createUpdaterArtifacts`, signs the installer manually with `tauri signer sign`, and falls back to an unsigned `latest.json` with a clear warning if signing fails. This allows the installer to ship while the in-app updater is regenerated.
+- **Topology graph fixed:** `useTopology` now uses `Promise.allSettled` so a single failing `listResources` call (e.g. RBAC denial on a custom resource or a missing CRD) no longer blanks the entire graph.
+- **Pod terminal fixed:** `ResourceDetail` now memoizes the per-pod resource context, so the exec session is no longer torn down and restarted on every render. Pods accessed from the sidebar now connect to the terminal as expected.
+- **Security:** Tauri signing keys (`privkey.txt`, `pubkey.txt`) are now in `.gitignore` to prevent accidental commit of the private key. `bump-version.ps1` now stages only the three version manifests explicitly (no more `git add -A`).
+
 ## v0.2.11
 
 - **Signing key configured:** згенеровано нову Ed25519 пару ключів для підпису. `pubkey` оновлено в `tauri.conf.json`. Для підпису релізів потрібно додати `TAURI_SIGNING_PRIVATE_KEY` в GitHub Actions secrets.
