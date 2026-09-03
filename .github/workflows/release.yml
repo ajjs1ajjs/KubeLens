@@ -62,19 +62,15 @@ jobs:
           echo "Version check passed: $VER"
 
       - name: Prepare signing key file
-        # Write the GitHub Secret to privkey.txt for the optional signing
-        # step below. The Tauri CLI's `decode_key` expects a minisign-format
-        # key file (base64-encoded), but the current secret contains a raw
-        # base64 key. The signing step handles this gracefully — it tries to
-        # sign and falls back to an unsigned latest.json if the key format
-        # is not compatible.
+        # Write the GitHub Secret (minisign-format key) to privkey.txt for signing.
+        # The secret must contain the full minisign key including headers.
         if: ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > privkey.txt
+          printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY" > privkey.txt
           echo "Loaded signing key: $(wc -c < privkey.txt) bytes"
 
       - name: Disable updater artifacts for build (signed manually below)
@@ -98,12 +94,8 @@ jobs:
         run: npm run tauri build -- ${{ matrix.args }}
 
       - name: Sign installer and create latest.json
-        # NOTE: The Tauri CLI's `decode_key` function expects a minisign-format
-        # key file (base64-encoded), not a raw base64 key. The current GitHub
-        # Secret contains a raw base64 key which the CLI cannot parse
-        # ("failed to convert base64 to utf8"). Until the secret is updated
-        # to the minisign format, we build without updater signing.
-        # The in-app updater will not work for this release.
+        # Sign the NSIS installer with the minisign private key from the GitHub Secret.
+        # The secret must contain the full minisign private key (with -----BEGIN MINISIGN...----- headers).
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
