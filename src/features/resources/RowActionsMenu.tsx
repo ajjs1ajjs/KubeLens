@@ -1,28 +1,18 @@
 import type { ReactNode } from "react";
-import {
-  Boxes,
-  Eye,
-  Pencil,
-  Plug,
-  RotateCcw,
-  Scaling,
-  ScrollText,
-  TerminalSquare,
-  Trash2,
-} from "lucide-react";
+import { Ellipsis, Eye, Pencil, RotateCcw, Scaling, ScrollText, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { meta } from "@/lib/k8s/object";
 import type { K8sObject } from "@/lib/k8s/types";
 
-/** Which Lens-style actions apply to a given kind. */
 const POD_ONLY = new Set(["Pod"]);
 const SCALABLE = new Set(["Deployment", "StatefulSet", "ReplicaSet"]);
 const RESTARTABLE = new Set(["Deployment", "StatefulSet", "DaemonSet", "CronJob"]);
@@ -32,8 +22,6 @@ export interface RowActions {
   onEdit?: (object: K8sObject) => void;
   onDelete?: (object: K8sObject) => void;
   onLogs?: (object: K8sObject) => void;
-  onExec?: (object: K8sObject) => void;
-  onPortForward?: (object: K8sObject) => void;
   onScale?: (object: K8sObject) => void;
   onRestart?: (object: K8sObject) => void;
 }
@@ -44,79 +32,67 @@ interface RowActionsMenuProps {
   actions: RowActions;
 }
 
+type MenuItem = {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  onSelect: () => void;
+  destructive?: boolean;
+};
+
 export function RowActionsMenu({ object, kind, actions }: RowActionsMenuProps) {
   const { t } = useTranslation();
   const isPod = POD_ONLY.has(kind);
   const scalable = SCALABLE.has(kind);
   const restartable = RESTARTABLE.has(kind);
+  const name = meta(object).name;
 
-  const items: {
-    key: string;
-    label: string;
-    icon: ReactNode;
-    onSelect: () => void;
-    destructive?: boolean;
-  }[] = [];
+  const general: MenuItem[] = [];
+  const workload: MenuItem[] = [];
+  const danger: MenuItem[] = [];
 
   if (actions.onViewYaml) {
-    items.push({
+    general.push({
       key: "view",
       label: t("resources.actions.viewYaml"),
-      icon: <Eye className="size-3.5" />,
+      icon: <Eye className="size-3.5 opacity-70" />,
       onSelect: () => actions.onViewYaml?.(object),
     });
   }
   if (actions.onEdit) {
-    items.push({
+    general.push({
       key: "edit",
       label: t("resources.actions.edit"),
-      icon: <Pencil className="size-3.5" />,
+      icon: <Pencil className="size-3.5 opacity-70" />,
       onSelect: () => actions.onEdit?.(object),
     });
   }
   if (isPod && actions.onLogs) {
-    items.push({
+    workload.push({
       key: "logs",
       label: t("resources.actions.logs"),
-      icon: <ScrollText className="size-3.5" />,
+      icon: <ScrollText className="size-3.5 opacity-70" />,
       onSelect: () => actions.onLogs?.(object),
     });
   }
-  if (isPod && actions.onExec) {
-    items.push({
-      key: "exec",
-      label: t("resources.actions.exec"),
-      icon: <TerminalSquare className="size-3.5" />,
-      onSelect: () => actions.onExec?.(object),
-    });
-  }
-  if (isPod && actions.onPortForward) {
-    items.push({
-      key: "port-forward",
-      label: t("resources.actions.portForward"),
-      icon: <Plug className="size-3.5" />,
-      onSelect: () => actions.onPortForward?.(object),
-    });
-  }
   if (scalable && actions.onScale) {
-    items.push({
+    workload.push({
       key: "scale",
       label: t("resources.actions.scale"),
-      icon: <Scaling className="size-3.5" />,
+      icon: <Scaling className="size-3.5 opacity-70" />,
       onSelect: () => actions.onScale?.(object),
     });
   }
   if (restartable && actions.onRestart) {
-    items.push({
+    workload.push({
       key: "restart",
       label: t("resources.actions.restart"),
-      icon: <RotateCcw className="size-3.5" />,
+      icon: <RotateCcw className="size-3.5 opacity-70" />,
       onSelect: () => actions.onRestart?.(object),
     });
   }
   if (actions.onDelete) {
-    if (items.length > 0) items.push({ key: "_sep", label: "", icon: null, onSelect: () => {} });
-    items.push({
+    danger.push({
       key: "delete",
       label: t("resources.actions.delete"),
       icon: <Trash2 className="size-3.5" />,
@@ -125,7 +101,24 @@ export function RowActionsMenu({ object, kind, actions }: RowActionsMenuProps) {
     });
   }
 
-  if (items.length === 0) return null;
+  const hasAny = general.length + workload.length + danger.length > 0;
+  if (!hasAny) return null;
+
+  const renderItems = (items: MenuItem[]) =>
+    items.map((item) => (
+      <DropdownMenuItem
+        key={item.key}
+        variant={item.destructive ? "destructive" : "default"}
+        className="gap-2.5 py-1.5 text-[13px] font-medium data-[variant=destructive]:font-medium"
+        onSelect={(e) => {
+          e.preventDefault();
+          item.onSelect();
+        }}
+      >
+        {item.icon}
+        <span className="flex-1">{item.label}</span>
+      </DropdownMenuItem>
+    ));
 
   return (
     <DropdownMenu>
@@ -133,29 +126,36 @@ export function RowActionsMenu({ object, kind, actions }: RowActionsMenuProps) {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={`Actions for ${meta(object).name}`}
+          aria-label={`Actions for ${name}`}
           onClick={(e) => e.stopPropagation()}
+          className="size-7 rounded-md border border-transparent bg-transparent opacity-60 transition-all hover:opacity-100 hover:bg-accent hover:border-border data-[state=open]:opacity-100 data-[state=open]:bg-accent data-[state=open]:border-border"
         >
-          <Boxes className="size-3.5" />
+          <Ellipsis className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-44">
-        {items.map((item) => {
-          if (item.key === "_sep") return <DropdownMenuSeparator key="sep" />;
-          return (
-            <DropdownMenuItem
-              key={item.key}
-              variant={item.destructive ? "destructive" : "default"}
-              onSelect={(e) => {
-                e.preventDefault();
-                item.onSelect();
-              }}
-            >
-              {item.icon}
-              {item.label}
-            </DropdownMenuItem>
-          );
-        })}
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        sideOffset={8}
+        collisionPadding={12}
+        className="min-w-52 max-h-[70vh] overflow-y-auto rounded-xl p-1.5 shadow-xl ring-1"
+      >
+        <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {kind} · {name}
+        </DropdownMenuLabel>
+        {general.length > 0 && (
+          <>
+            <div className="py-1">{renderItems(general)}</div>
+            {(workload.length > 0 || danger.length > 0) && <DropdownMenuSeparator className="my-1" />}
+          </>
+        )}
+        {workload.length > 0 && (
+          <>
+            <div className="py-1">{renderItems(workload)}</div>
+            {danger.length > 0 && <DropdownMenuSeparator className="my-1" />}
+          </>
+        )}
+        {danger.length > 0 && <div className="py-1">{renderItems(danger)}</div>}
       </DropdownMenuContent>
     </DropdownMenu>
   );

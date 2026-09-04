@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ResourceDetail } from "./ResourceDetail";
+import { podContainerInfo } from "./pod-container-info";
 import { podContainers } from "./pod-containers";
 import type { K8sObject, ResourceContext } from "@/lib/k8s/types";
 
@@ -14,6 +15,10 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
+}));
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ resolvedTheme: "light" }),
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 import { invoke } from "@tauri-apps/api/core";
@@ -61,12 +66,83 @@ describe("podContainers", () => {
   });
 });
 
+describe("podContainerInfo", () => {
+  it("extracts per-container info from spec and status", () => {
+    const podWithStatus: K8sObject = {
+      apiVersion: "v1",
+      kind: "Pod",
+      metadata: { name: "pod-a" },
+      spec: {
+        containers: [
+          {
+            name: "app",
+            image: "nginx:1.25",
+            resources: {
+              requests: { cpu: "100m", memory: "128Mi" },
+              limits: { cpu: "500m", memory: "256Mi" },
+            },
+          },
+          { name: "sidecar", image: "busybox" },
+        ],
+      },
+      status: {
+        phase: "Running",
+        podIP: "10.0.0.5",
+        qosClass: "Burstable",
+        containerStatuses: [
+          {
+            name: "app",
+            ready: true,
+            restartCount: 3,
+            state: { Running: { startedAt: "2024-01-01T00:00:00Z" } },
+          },
+          {
+            name: "sidecar",
+            ready: false,
+            restartCount: 0,
+            state: { Waiting: { reason: "ContainerCreating" } },
+          },
+        ],
+      },
+    };
+    const info = podContainerInfo(podWithStatus);
+    expect(info).toHaveLength(2);
+    expect(info[0]).toMatchObject({
+      name: "app",
+      image: "nginx:1.25",
+      ready: true,
+      restartCount: 3,
+      state: "Running",
+    });
+    expect(info[0].cpuRequest).toBe(100);
+    expect(info[0].memoryLimit).toBe(256 * 1024 * 1024);
+    expect(info[1]).toMatchObject({
+      name: "sidecar",
+      ready: false,
+      state: "Waiting",
+      reason: "ContainerCreating",
+    });
+  });
+
+  it("returns Unknown state when no containerStatuses exist", () => {
+    const info = podContainerInfo(pod);
+    expect(info).toHaveLength(2);
+    expect(info[0]).toMatchObject({
+      name: "app",
+      image: "nginx",
+      state: "Unknown",
+      restartCount: 0,
+    });
+  });
+});
+
 describe("ResourceDetail", () => {
-  it("shows logs and terminal tabs for pods", () => {
+  it("shows YAML tab (default) and Raw JSON tab for pods", () => {
     render(<ResourceDetail kind="Pod" object={pod} ctx={ctx} onOpenChange={() => {}} />, {
       wrapper,
     });
     expect(screen.getByText("Raw JSON")).toBeInTheDocument();
+    expect(screen.getByText("YAML")).toBeInTheDocument();
     expect(screen.getByText("Logs")).toBeInTheDocument();
     expect(screen.getByText("Terminal")).toBeInTheDocument();
     expect(screen.getByText("Port Forward")).toBeInTheDocument();
@@ -85,5 +161,73 @@ describe("ResourceDetail", () => {
     expect(screen.queryByText("Logs")).not.toBeInTheDocument();
     expect(screen.queryByText("Terminal")).not.toBeInTheDocument();
     expect(screen.queryByText("Port Forward")).not.toBeInTheDocument();
+  });
+
+  it("shows container details for pods with containerStatuses", () => {
+    const podWithStatus: K8sObject = {
+      apiVersion: "v1",
+      kind: "Pod",
+      metadata: { name: "pod-a", namespace: "default" },
+      spec: { containers: [{ name: "app", image: "nginx" }] },
+      status: {
+        phase: "Running",
+        podIP: "10.0.0.5",
+        qosClass: "Burstable",
+        containerStatuses: [
+          {
+            name: "app",
+            ready: true,
+            restartCount: 1,
+            state: { Running: { startedAt: "2024-01-01T00:00:00Z" } },
+          },
+        ],
+      },
+    };
+    render(<ResourceDetail kind="Pod" object={podWithStatus} ctx={ctx} onOpenChange={() => {}} />, {
+      wrapper,
+    });
+
+    // Container card shows the container name and image
+    expect(screen.getByText("app")).toBeInTheDocument();
+    expect(screen.getByText("nginx")).toBeInTheDocument();
+    // Container actions menu is present
+    expect(screen.getByRole("button", { name: /Actions for app/ })).toBeInTheDocument();
+  });
+
+  it("shows annotations section when annotations are present", () => {
+    const podWithAnnotations: K8sObject = {
+      apiVersion: pod.apiVersion,
+      kind: pod.kind,
+      metadata: { ...(pod.metadata as Record<string, unknown>), annotations: { "app.kubernetes.io/version": "1.0.0" } } as unknown as K8sObject["metadata"],
+      spec: pod.spec,
+      status: pod.status,
+    };
+    render(
+      <ResourceDetail kind="Pod" object={podWithAnnotations} ctx={ctx} onOpenChange={() => {}} />,
+      {
+        wrapper,
+      },
+    );
+    expect(screen.getByText("Annotations")).toBeInTheDocument();
+    expect(screen.getByText("app.kubernetes.io/version")).toBeInTheDocument();
+  });
+
+  it("shows QoS, Node, and Pod IP in the status card for pods", () => {
+    const podFull: K8sObject = {
+      apiVersion: "v1",
+      kind: "Pod",
+      metadata: { name: "pod-a", namespace: "default" },
+      spec: { containers: [{ name: "app", image: "nginx" }], nodeName: "worker-1" },
+      status: { phase: "Running", podIP: "10.0.0.5", qosClass: "Guaranteed" },
+    };
+    render(<ResourceDetail kind="Pod" object={podFull} ctx={ctx} onOpenChange={() => {}} />, {
+      wrapper,
+    });
+    expect(screen.getByText("QoS")).toBeInTheDocument();
+    expect(screen.getByText("Guaranteed")).toBeInTheDocument();
+    expect(screen.getByText("Node")).toBeInTheDocument();
+    expect(screen.getByText("worker-1")).toBeInTheDocument();
+    expect(screen.getByText("Pod IP")).toBeInTheDocument();
+    expect(screen.getByText("10.0.0.5")).toBeInTheDocument();
   });
 });

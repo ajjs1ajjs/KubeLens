@@ -17,12 +17,14 @@ interface TerminalTabProps {
   ctx: ResourceContext;
   name: string;
   containers: string[];
+  /** Pre-selected container (e.g. from container actions menu). */
+  selectedContainer?: string;
 }
 
 /** Exec terminal for a pod with a container picker and reconnect control. */
-export function TerminalTab({ ctx, name, containers }: TerminalTabProps) {
+export function TerminalTab({ ctx, name, containers, selectedContainer }: TerminalTabProps) {
   const { t } = useTranslation();
-  const [container, setContainer] = useState(containers[0] ?? "");
+  const [container, setContainer] = useState(selectedContainer ?? containers[0] ?? "");
   const [nonce, setNonce] = useState(0);
   const session = useTerminal(ctx, name, container || undefined, ["/bin/sh"], nonce);
 

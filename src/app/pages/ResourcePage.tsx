@@ -33,6 +33,7 @@ export function ResourcePage() {
   const activeCluster = useActiveCluster();
   const activeNamespace = useClusterStore((s) => s.activeNamespace);
   const [selected, setSelected] = useState<K8sObject | null>(null);
+  const [detailTab, setDetailTab] = useState<string | undefined>(undefined);
   const [createOpen, setCreateOpen] = useState(false);
   const [editObject, setEditObject] = useState<K8sObject | null>(null);
   const [viewObject, setViewObject] = useState<K8sObject | null>(null);
@@ -169,14 +170,15 @@ export function ResourcePage() {
               objects={objects}
               showNamespace={Boolean(meta?.namespaced) && activeNamespace === ""}
               metrics={metrics}
-              onSelect={setSelected}
+              onSelect={() => {}}
               actions={{
                 onViewYaml: setViewObject,
                 onEdit: setEditObject,
                 onDelete: setDeleteTarget,
-                onLogs: (o) => setSelected(o),
-                onExec: (o) => setSelected(o),
-                onPortForward: (o) => setSelected(o),
+                onLogs: (o) => {
+                  setSelected(o);
+                  setDetailTab("logs");
+                },
                 onScale: setScaleTarget,
                 onRestart: setRestartTarget,
               }}
@@ -185,12 +187,18 @@ export function ResourcePage() {
         </div>
 
         {selected && (
-          <ResizablePanel defaultWidth={440} minWidth={320} maxWidth={720}>
+          <ResizablePanel defaultWidth={560} minWidth={380} maxWidth={960}>
             <ResourceDetail
               kind={kind ?? "Resource"}
               object={selected}
               ctx={ctx}
-              onOpenChange={(open) => !open && setSelected(null)}
+              defaultTab={detailTab}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setSelected(null);
+                  setDetailTab(undefined);
+                }
+              }}
             />
           </ResizablePanel>
         )}

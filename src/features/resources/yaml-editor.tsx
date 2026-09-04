@@ -7,24 +7,26 @@ interface YamlEditorProps {
   onChange: (value: string) => void;
   height?: string;
   readOnly?: boolean;
+  className?: string;
 }
 
 /** Lightweight YAML editor (CodeMirror 6) used for manifests. */
-export function YamlEditor({ value, onChange, height = "380px", readOnly }: YamlEditorProps) {
+export function YamlEditor({ value, onChange, height, readOnly, className }: YamlEditorProps) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
 
   return (
     <CodeMirror
       value={value}
-      height={height}
+      height={height ?? "100%"}
       extensions={[yaml()]}
       theme={dark ? "dark" : "light"}
       basicSetup={{ foldGutter: true, lineNumbers: true }}
       readOnly={readOnly}
       onChange={onChange}
       aria-label="YAML editor"
-      className="overflow-hidden rounded-md border text-xs"
+      className={`flex h-full min-h-0 w-full flex-1 overflow-auto rounded-md border text-xs [&_.cm-editor]:w-full [&_.cm-scroller]:!w-full [&_.cm-content]:!w-full ${className ?? "!bg-transparent"}`}
+      style={{ width: "100%" }}
     />
   );
 }

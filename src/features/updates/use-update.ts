@@ -104,8 +104,8 @@ export function useUpdate(): UseUpdateResult {
   const openReleasePage = useCallback(async () => {
     const url = releaseUrlFor(version);
     try {
-      const { open } = await import("@tauri-apps/plugin-shell");
-      await open(url);
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl(url);
     } catch {
       const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
       await writeText(url);

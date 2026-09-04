@@ -154,7 +154,7 @@ export function ResourceTable({
                 <tr
                   key={row.id}
                   onClick={() => onSelect(row.original)}
-                  className="hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
+                  className="group hover:bg-muted/50 border-b last:border-b-0"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-3 py-1.5 whitespace-nowrap">
