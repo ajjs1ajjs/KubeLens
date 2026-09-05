@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to publish (for example v0.2.2)"
+        required: true
+        default: "v0.2.2"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: --bundles nsis
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify version sync (tag vs manifests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.release_tag || github.ref_name }}"
+          VER="${TAG#v}"
+          PKG=$(node -p "require('./package.json').version")
+          TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)"/\1/')
+          echo "Tag: $TAG  expected version: $VER"
+          echo "package.json: $PKG"
+          echo "tauri.conf.json: $TAURI"
+          echo "Cargo.toml: $CARGO"
+          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" ]]; then
+            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO"
+            echo "Fix with: ./scripts/bump-version.ps1 $VER  (or ensure all three files match the tag)"
+            exit 1
+          fi
+          if [[ "$PKG" != "$TAURI" || "$PKG" != "$CARGO" ]]; then
+            echo "::error::Manifest versions out of sync: pkg=$PKG tauri=$TAURI cargo=$CARGO"
+            exit 1
+          fi
+          echo "Version check passed: $VER"
+
+      - name: Prepare signing key file
+        if: ${{ env.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > privkey.txt
+          echo "Loaded signing key: $(wc -c < privkey.txt) bytes"
+
+      - name: Disable updater artifacts for build (signed manually below)
+        shell: bash
+        run: |
+          node -e "
+            const fs=require('fs');
+            const p='src-tauri/tauri.conf.json';
+            const c=JSON.parse(fs.readFileSync(p,'utf8'));
+            c.bundle.createUpdaterArtifacts=false;
+            fs.writeFileSync(p, JSON.stringify(c,null,2)+'\n');
+            console.log('createUpdaterArtifacts disabled for release build');
+          "
+
+      - name: Build Tauri app
+        # Intentionally NOT passing TAURI_SIGNING_PRIVATE_KEY here — the
+        # build step does not need it because createUpdaterArtifacts is off
+        # (set above). The installer is signed manually in the next step.
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Sign installer and create latest.json
+        # Sign the NSIS installer with the minisign private key from the GitHub Secret.
+        # The secret must contain the full minisign private key (with -----BEGIN MINISIGN...----- headers).
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          EXE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -1)
+          if [ -z "$EXE" ]; then
+            echo "::error::No .exe found in nsis bundle output"
+            exit 1
+          fi
+          echo "Found installer: $EXE"
+          TAG="${{ inputs.release_tag || github.ref_name }}"
+          VER="${TAG#v}"
+
+          # Try to sign the installer. If signing fails (e.g. key format
+          # mismatch), fall back to an unsigned latest.json with a warning.
+          if npx tauri signer sign --private-key-path privkey.txt "$EXE" 2>/tmp/sign_err; then
+            SIG_FILE="${EXE}.sig"
+            SIG=$(tr -d '\r\n' < "$SIG_FILE")
+            echo "Signature: $SIG"
+            SIGNED=true
+          else
+            echo "::warning::Signing failed: $(cat /tmp/sign_err)"
+            echo "::warning::Building an unsigned latest.json. The in-app updater will not work for this release."
+            SIG="UNSIGNED"
+            SIGNED=false
+          fi
+
+          SHA=$(sha256sum "$EXE" | cut -d' ' -f1)
+          echo "Version: $VER"
+          echo "SHA256: $SHA"
+
+          cat > latest.json << EOF
+          {
+            "version": "$VER",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "$SIG",
+                "url": "https://github.com/ajjs1ajjs/KubeLens/releases/download/$TAG/$(basename $EXE)",
+                "checksum": "sha256:$SHA"
+              }
+            }
+          }
+          EOF
+          cat latest.json
+          echo "signed=$SIGNED" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          name: KubeLens ${{ inputs.release_tag || github.ref_name }}
+          body: |
+            See the [changelog](https://github.com/ajjs1ajjs/KubeLens/releases) for details.
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}

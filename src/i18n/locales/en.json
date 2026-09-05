@@ -1,0 +1,332 @@
+{
+  "common": {
+    "reload": "Reload",
+    "cancel": "Cancel",
+    "save": "Save",
+    "apply": "Apply",
+    "close": "Close",
+    "retry": "Retry",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "later": "Later",
+    "updateNow": "Update now",
+    "loading": "Loading…",
+    "noCluster": "No cluster selected. Connect a cluster from the sidebar.",
+    "clusterScoped": "cluster-scoped",
+    "allNamespaces": "all namespaces",
+    "unknown": "Unknown",
+    "live": "live"
+  },
+  "overview": {
+    "title": "Welcome to KubeLens",
+    "subtitle": "A modern, lightweight Kubernetes IDE. Connect a cluster to explore your workloads, metrics, Helm releases and dependency topology — all in one place.",
+    "badge": "Kubernetes IDE",
+    "clusters": "Clusters",
+    "connectedOf": "{{connected}} of {{total}} connected",
+    "noClustersFound": "No clusters found in kubeconfig.",
+    "noClustersHint": "Point KUBECONFIG at a valid file, then press reload.",
+    "resources": "Resources",
+    "features": {
+      "browser": {
+        "title": "Resource browser",
+        "description": "Pods, Deployments, Services and more with live updates."
+      },
+      "logs": {
+        "title": "Logs, exec & port-forward",
+        "description": "Stream logs, open a terminal and forward ports to localhost."
+      },
+      "yaml": {
+        "title": "YAML editor",
+        "description": "View, edit and apply manifests with validation."
+      },
+      "metrics": {
+        "title": "Metrics",
+        "description": "CPU and memory usage for nodes and pods in real time."
+      },
+      "helm": {
+        "title": "Helm",
+        "description": "Browse and manage Helm releases."
+      },
+      "topology": {
+        "title": "Topology",
+        "description": "Visual dependency graph between your workloads."
+      }
+    },
+    "noServer": "no server",
+    "connected": "Connected",
+    "connecting": "Connecting…"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "appearanceDesc": "Choose how KubeLens looks.",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "language": "Language",
+    "languageEn": "English",
+    "languageUk": "Українська",
+    "application": "Application",
+    "clusterConfigs": "Cluster configs",
+    "noConfigs": "No configs added. Add a kubeconfig file below.",
+    "addKubeconfig": "Add kubeconfig…",
+    "clustersInActive": "{{count}} cluster in active config",
+    "clustersInActive_plural": "{{count}} clusters in active config"
+  },
+  "sidebar": {
+    "brand": "KubeLens",
+    "brandSub": "Kubernetes IDE",
+    "clusters": "Clusters",
+    "noConfigs": "No configs",
+    "noClusters": "No clusters found",
+    "tools": "Tools",
+    "helm": "Helm Releases",
+    "topology": "Topology",
+    "settings": "Settings",
+    "addConfig": "Add cluster config",
+    "reloadConfig": "Reload kubeconfig",
+    "collapse": "Collapse config",
+    "expand": "Expand config",
+    "rename": "Rename {{name}}",
+    "renameTitle": "Rename cluster",
+    "renameDescription": "Choose a display name for this added cluster configuration.",
+    "remove": "Remove {{name}}",
+    "setActive": "Set as active",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "clusterActions": "Actions for {{name}}",
+    "switchTo": "Switch to cluster",
+    "active": "Active",
+    "connected": "Connected",
+    "offline": "Offline",
+    "connecting": "Connecting…"
+  },
+  "resources": {
+    "page": {
+      "noCluster": "No cluster selected. Connect a cluster from the sidebar to browse resources.",
+      "failedToLoad": "Failed to load {{kind}}",
+      "create": "Create",
+      "createTitle": "Create {{label}}",
+      "createDescription": "Apply a new {{label}} manifest.",
+      "editTitle": "Edit {{name}}",
+      "editDescription": "Apply changes to update this resource in the cluster."
+    },
+    "columns": {
+      "name": "Name",
+      "namespace": "Namespace",
+      "ready": "Ready",
+      "status": "Status",
+      "age": "Age",
+      "type": "Type",
+      "clusterIp": "Cluster IP",
+      "roles": "Roles",
+      "version": "Version",
+      "data": "Data",
+      "capacity": "Capacity",
+      "class": "Class",
+      "address": "Address",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "completions": "Completions",
+      "containers": "Containers",
+      "container": "Container",
+      "restarts": "Restarts",
+      "controlledBy": "Controlled By",
+      "node": "Node",
+      "qos": "QoS"
+    },
+    "actions": {
+      "viewYaml": "View YAML",
+      "edit": "Edit",
+      "delete": "Delete",
+      "logs": "Logs",
+      "exec": "Exec",
+      "portForward": "Port Forward",
+      "restart": "Restart",
+      "scale": "Scale",
+      "more": "More actions"
+    },
+    "scale": {
+      "title": "Scale {{kind}}",
+      "description": "Set the desired replica count for {{name}}.",
+      "replicas": "Replicas",
+      "apply": "Scale",
+      "invalid": "Replicas must be a non-negative integer."
+    },
+    "restart": {
+      "title": "Restart {{kind}}",
+      "description": "Restart will delete all pods owned by {{name}}. The controller will recreate them.",
+      "confirm": "Restart"
+    },
+    "yaml": {
+      "viewTitle": "View {{name}}",
+      "editTitle": "Edit {{name}}",
+      "createTitle": "Create {{label}}",
+      "description": "Apply changes to update this resource in the cluster.",
+      "createDescription": "Apply a new {{label}} manifest.",
+      "reset": "Reset",
+      "applied": "Manifest applied"
+    },
+    "detail": {
+      "phase": "Phase",
+      "restarts": "Restarts",
+      "image": "Image",
+      "portForward": "Port Forward",
+      "containers": "{{count}} containers",
+      "oneContainer": "1 container",
+      "rawJson": "Raw JSON",
+      "yaml": "YAML",
+      "metrics": "Metrics",
+      "logs": "Logs",
+      "terminal": "Terminal",
+      "noLabels": "No labels",
+      "annotations": "Annotations",
+      "noAnnotations": "No annotations",
+      "qos": "QoS",
+      "node": "Node",
+      "podIP": "Pod IP",
+      "controlledBy": "Controlled By",
+      "containersTitle": "Containers",
+      "containerName": "Container",
+      "containerImage": "Image",
+      "containerReady": "Ready",
+      "containerState": "State",
+      "requests": "Requests",
+      "limits": "Limits",
+      "container": {
+        "logs": "Logs",
+        "exec": "Exec",
+        "image": "Image",
+        "pullPolicy": "Pull Policy",
+        "command": "Command",
+        "args": "Args",
+        "workingDir": "Working Dir",
+        "resources": "Resources",
+        "cpuRequest": "CPU Request",
+        "cpuLimit": "CPU Limit",
+        "memoryRequest": "Memory Request",
+        "memoryLimit": "Memory Limit",
+        "ports": "Ports",
+        "env": "Environment",
+        "volumeMounts": "Volume Mounts",
+        "probes": "Probes",
+        "livenessProbe": "Liveness",
+        "readinessProbe": "Readiness",
+        "startupProbe": "Startup",
+        "securityContext": "Security Context",
+        "privileged": "Privileged",
+        "runAsUser": "Run As User",
+        "readOnlyFs": "Read-only FS",
+        "allowPrivEsc": "Allow Priv Escalation"
+      }
+    },
+    "logs": {
+      "container": "Container",
+      "refresh": "Refresh logs",
+      "stopFollowing": "Stop following logs",
+      "follow": "Follow logs",
+      "loading": "Loading logs…",
+      "noLogs": "No logs available."
+    },
+    "terminal": {
+      "container": "Container",
+      "restart": "Restart terminal session",
+      "connecting": "Connecting…",
+      "notStarted": "Terminal not started."
+    },
+    "metrics": {
+      "loading": "Loading metrics…",
+      "noMetrics": "No metrics available — is metrics-server installed?",
+      "usage": "usage",
+      "request": "request",
+      "limit": "limit"
+    },
+    "portForward": {
+      "title": "Port Forward",
+      "description": "Expose {{name}} on a local port.",
+      "remotePort": "Remote port",
+      "forward": "Forward",
+      "noTunnels": "No active tunnels for this pod.",
+      "stop": "Stop port forward"
+    },
+    "manifest": {
+      "title": "{{title}}",
+      "noValues": "No values set."
+    },
+    "delete": {
+      "title": "Delete {{kind}}",
+      "description": "This will permanently delete {{name}} from the cluster. This action cannot be undone.",
+      "confirm": "Delete"
+    },
+    "toasts": {
+      "resourceDeleted": "Resource deleted",
+      "manifestApplied": "Manifest applied",
+      "portForwarded": "Port {{port}} forwarded",
+      "portForwardStopped": "Port forward stopped",
+      "releaseUninstalled": "Release \"{{name}}\" uninstalled",
+      "scaled": "Scaled to {{replicas}} replicas",
+      "restartRequested": "Restart requested"
+    }
+  },
+  "helm": {
+    "title": "Helm Releases",
+    "installedCharts": "Installed charts on {{name}}",
+    "noCluster": "No cluster selected. Connect a cluster to browse Helm releases.",
+    "failedToLoad": "Failed to load Helm releases",
+    "noReleases": "No Helm releases found.",
+    "release": "Release",
+    "rev": "rev",
+    "chart": "Chart",
+    "appVersion": "app v{{version}}",
+    "loading": "Loading release…",
+    "values": "Values",
+    "manifest": "Manifest",
+    "notes": "Notes",
+    "diff": "Diff",
+    "noValues": "No values set.",
+    "deleteKind": "Helm release",
+    "columns": {
+      "name": "Name",
+      "namespace": "Namespace",
+      "status": "Status",
+      "chart": "Chart",
+      "rev": "Rev",
+      "age": "Age"
+    },
+    "diffTab": {
+      "baseRev": "Base rev",
+      "targetRev": "Target rev",
+      "choose": "Choose two different revisions to compare.",
+      "loading": "Loading revisions…"
+    }
+  },
+  "topology": {
+    "title": "Topology",
+    "summary": "Dependencies in {{namespace}} · {{nodes}} nodes, {{edges}} edges",
+    "allNamespaces": "all namespaces",
+    "noCluster": "No cluster selected. Connect a cluster to see the dependency graph.",
+    "failedToLoad": "Failed to load topology",
+    "nothingToGraph": "Nothing to graph yet.",
+    "loading": "Loading graph…",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "refresh": "Refresh topology"
+  },
+  "updates": {
+    "checking": "Checking for updates…",
+    "available": "KubeLens {{version}} is available",
+    "downloading": "Downloading update…",
+    "downloadingProgress": "Downloading update… {{progress}}%",
+    "downloadOnGithub": "Download on GitHub",
+    "openReleasePage": "Open release page on GitHub"
+  },
+  "header": {
+    "noCluster": "No cluster connected",
+    "connected": "connected",
+    "offline": "offline",
+    "allNamespaces": "All namespaces",
+    "toggleTheme": "Toggle theme"
+  }
+}

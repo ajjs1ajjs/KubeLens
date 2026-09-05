@@ -1,0 +1,90 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: "!contains(github.event.head_commit.message, 'chore: release')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # A PAT is required here (not the default GITHUB_TOKEN): GitHub does not
+          # let a GITHUB_TOKEN-authored push trigger another workflow, so the tag
+          # push below would silently fail to kick off release.yml otherwise.
+          # Fallback to GITHUB_TOKEN keeps checkout working even if RELEASE_TOKEN is not configured (bump will be skipped below).
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Bump patch version and tag
+        env:
+          # commit message and secret presence are passed via env (never
+          # interpolated directly into the shell script — template injection)
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+          HAS_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
+        run: |
+          if [[ "$HEAD_MSG" == ci:* ]]; then
+            echo "ci commit — skipping auto-release bump"
+            exit 0
+          fi
+          if [ "$HAS_RELEASE_TOKEN" != "true" ]; then
+            echo "::warning::RELEASE_TOKEN not set — skipping auto-release bump. Set PAT to enable."
+            exit 0
+          fi
+          set -euo pipefail
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+          TAG="v$NEW"
+          echo "Bumping $CURRENT -> $NEW ($TAG)"
+
+          # Update all three manifests atomically via Node (avoids sed/regex fragility)
+          export NEW
+          node <<'NODEEOF'
+          const fs = require('fs');
+          const newVer = process.env.NEW;
+          // package.json + tauri.conf.json
+          for (const f of ['package.json', 'src-tauri/tauri.conf.json']) {
+            const c = JSON.parse(fs.readFileSync(f, 'utf8'));
+            c.version = newVer;
+            fs.writeFileSync(f, JSON.stringify(c, null, 2) + '\n');
+          }
+          // Cargo.toml: replace first ^version = "..." (package version)
+          let cargo = fs.readFileSync('src-tauri/Cargo.toml', 'utf8');
+          let count = 0;
+          cargo = cargo.replace(/^version\s*=\s*"[^"]*"/m, () => {
+            count++;
+            return 'version = "' + newVer + '"';
+          });
+          if (count !== 1) {
+            console.error('Failed to bump Cargo.toml: expected 1 replacement, got ' + count);
+            process.exit(1);
+          }
+          fs.writeFileSync('src-tauri/Cargo.toml', cargo);
+          // verify
+          const pkg = JSON.parse(fs.readFileSync('package.json','utf8')).version;
+          const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')).version;
+          const cargoVer = fs.readFileSync('src-tauri/Cargo.toml','utf8').match(/^version\s*=\s*"([^"]+)"/m)[1];
+          if (pkg !== newVer || tauri !== newVer || cargoVer !== newVer) {
+            console.error('Version mismatch after bump: pkg=' + pkg + ' tauri=' + tauri + ' cargo=' + cargoVer + ' expected=' + newVer);
+            process.exit(1);
+          }
+          console.log('Verified versions in sync: ' + newVer);
+          NODEEOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src-tauri/Cargo.toml src-tauri/tauri.conf.json package.json
+          git commit -m "chore: release $TAG"
+          git tag "$TAG"
+          git push origin HEAD:main
+          git push origin "$TAG"

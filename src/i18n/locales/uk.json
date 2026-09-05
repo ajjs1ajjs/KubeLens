@@ -1,0 +1,332 @@
+{
+  "common": {
+    "reload": "Оновити",
+    "cancel": "Скасувати",
+    "save": "Зберегти",
+    "apply": "Застосувати",
+    "close": "Закрити",
+    "retry": "Повторити",
+    "delete": "Видалити",
+    "edit": "Редагувати",
+    "create": "Створити",
+    "later": "Пізніше",
+    "updateNow": "Оновити зараз",
+    "loading": "Завантаження…",
+    "noCluster": "Кластер не вибрано. Підключіть кластер з бічної панелі.",
+    "clusterScoped": "кластерний",
+    "allNamespaces": "усі простори",
+    "unknown": "Невідомо",
+    "live": "в реальному часі"
+  },
+  "overview": {
+    "title": "Ласкаво просимо до KubeLens",
+    "subtitle": "Сучасна, легка Kubernetes IDE. Підключіть кластер, щоб досліджувати робочі навантаження, метрики, Helm-релізи та топологію залежностей — все в одному місці.",
+    "badge": "Kubernetes IDE",
+    "clusters": "Кластери",
+    "connectedOf": "{{connected}} з {{total}} підключено",
+    "noClustersFound": "У kubeconfig не знайдено кластерів.",
+    "noClustersHint": "Вкажіть KUBECONFIG на коректний файл, потім натисніть оновити.",
+    "resources": "Ресурси",
+    "features": {
+      "browser": {
+        "title": "Огляд ресурсів",
+        "description": "Поди, розгортання, сервіси та інше з оновленнями в реальному часі."
+      },
+      "logs": {
+        "title": "Логи, exec та port-forward",
+        "description": "Потокові логи, термінал і проброс портів на localhost."
+      },
+      "yaml": {
+        "title": "YAML-редактор",
+        "description": "Перегляд, редагування та застосування маніфестів з валідацією."
+      },
+      "metrics": {
+        "title": "Метрики",
+        "description": "Використання CPU та пам'яті для вузлів і подів у реальному часі."
+      },
+      "helm": {
+        "title": "Helm",
+        "description": "Перегляд і керування Helm-релізами."
+      },
+      "topology": {
+        "title": "Топологія",
+        "description": "Візуальний граф залежностей між вашими робочими навантаженнями."
+      }
+    },
+    "noServer": "немає сервера",
+    "connected": "Підключено",
+    "connecting": "Підключення…"
+  },
+  "settings": {
+    "title": "Налаштування",
+    "appearance": "Вигляд",
+    "appearanceDesc": "Оберіть, як виглядає KubeLens.",
+    "theme": "Тема",
+    "themeLight": "Світла",
+    "themeDark": "Темна",
+    "themeSystem": "Системна",
+    "language": "Мова",
+    "languageEn": "English",
+    "languageUk": "Українська",
+    "application": "Застосунок",
+    "clusterConfigs": "Конфіги кластерів",
+    "noConfigs": "Конфігів немає. Додайте файл kubeconfig нижче.",
+    "addKubeconfig": "Додати kubeconfig…",
+    "clustersInActive": "{{count}} кластер в активному конфігу",
+    "clustersInActive_plural": "{{count}} кластери в активному конфігу"
+  },
+  "sidebar": {
+    "brand": "KubeLens",
+    "brandSub": "Kubernetes IDE",
+    "clusters": "Кластери",
+    "noConfigs": "Немає конфігів",
+    "noClusters": "Кластерів не знайдено",
+    "tools": "Інструменти",
+    "helm": "Helm-релізи",
+    "topology": "Топологія",
+    "settings": "Налаштування",
+    "addConfig": "Додати конфіг кластера",
+    "reloadConfig": "Оновити kubeconfig",
+    "collapse": "Згорнути конфіг",
+    "expand": "Розгорнути конфіг",
+    "rename": "Перейменувати {{name}}",
+    "renameTitle": "Перейменувати кластер",
+    "renameDescription": "Вкажіть назву для цього доданого конфіга кластера.",
+    "remove": "Видалити {{name}}",
+    "setActive": "Зробити активним",
+    "connect": "Підключити",
+    "disconnect": "Відключити",
+    "clusterActions": "Дії для {{name}}",
+    "switchTo": "Перемкнутися на кластер",
+    "active": "Активний",
+    "connected": "Підключений",
+    "offline": "Офлайн",
+    "connecting": "Підключення…"
+  },
+  "resources": {
+    "page": {
+      "noCluster": "Кластер не вибрано. Підключіть кластер з бічної панелі, щоб переглядати ресурси.",
+      "failedToLoad": "Не вдалося завантажити {{kind}}",
+      "create": "Створити",
+      "createTitle": "Створити {{label}}",
+      "createDescription": "Застосувати новий маніфест {{label}}.",
+      "editTitle": "Редагувати {{name}}",
+      "editDescription": "Застосуйте зміни, щоб оновити цей ресурс у кластері."
+    },
+    "columns": {
+      "name": "Ім'я",
+      "namespace": "Простір",
+      "ready": "Готово",
+      "status": "Статус",
+      "age": "Вік",
+      "type": "Тип",
+      "clusterIp": "Cluster IP",
+      "roles": "Ролі",
+      "version": "Версія",
+      "data": "Дані",
+      "capacity": "Ємність",
+      "class": "Клас",
+      "address": "Адреса",
+      "cpu": "CPU",
+      "memory": "Пам'ять",
+      "completions": "Завершень",
+      "containers": "Контейнери",
+      "container": "Контейнер",
+      "restarts": "Перезапуски",
+      "controlledBy": "Ким керується",
+      "node": "Вузол",
+      "qos": "QoS"
+    },
+    "actions": {
+      "viewYaml": "Переглянути YAML",
+      "edit": "Редагувати",
+      "delete": "Видалити",
+      "logs": "Логи",
+      "exec": "Exec",
+      "portForward": "Port Forward",
+      "restart": "Перезапустити",
+      "scale": "Масштабувати",
+      "more": "Більше дій"
+    },
+    "scale": {
+      "title": "Масштабувати {{kind}}",
+      "description": "Встановіть бажану кількість реплік для {{name}}.",
+      "replicas": "Репліки",
+      "apply": "Масштабувати",
+      "invalid": "Кількість реплік має бути невід'ємним цілим числом."
+    },
+    "restart": {
+      "title": "Перезапустити {{kind}}",
+      "description": "Перезапуск видалить усі поди, що належать {{name}}. Контролер створить їх заново.",
+      "confirm": "Перезапустити"
+    },
+    "yaml": {
+      "viewTitle": "Перегляд {{name}}",
+      "editTitle": "Редагувати {{name}}",
+      "createTitle": "Створити {{label}}",
+      "description": "Застосуйте зміни, щоб оновити цей ресурс у кластері.",
+      "createDescription": "Застосувати новий маніфест {{label}}.",
+      "reset": "Скинути",
+      "applied": "Маніфест застосовано"
+    },
+    "detail": {
+      "phase": "Фаза",
+      "restarts": "Перезапуски",
+      "image": "Образ",
+      "portForward": "Port Forward",
+      "containers": "{{count}} контейнери",
+      "oneContainer": "1 контейнер",
+      "rawJson": "Raw JSON",
+      "yaml": "YAML",
+      "metrics": "Метрики",
+      "logs": "Логи",
+      "terminal": "Термінал",
+      "noLabels": "Немає міток",
+      "annotations": "Анотації",
+      "noAnnotations": "Немає анотацій",
+      "qos": "QoS",
+      "node": "Вузол",
+      "podIP": "IP поди",
+      "controlledBy": "Керується",
+      "containersTitle": "Контейнери",
+      "containerName": "Контейнер",
+      "containerImage": "Образ",
+      "containerReady": "Готовий",
+      "containerState": "Стан",
+      "requests": "Запити",
+      "limits": "Ліміти",
+      "container": {
+        "logs": "Логи",
+        "exec": "Exec",
+        "image": "Образ",
+        "pullPolicy": "Політика запуску",
+        "command": "Команда",
+        "args": "Аргументи",
+        "workingDir": "Робоча директорія",
+        "resources": "Ресурси",
+        "cpuRequest": "CPU запит",
+        "cpuLimit": "CPU ліміт",
+        "memoryRequest": "Пам'ять запит",
+        "memoryLimit": "Пам'ять ліміт",
+        "ports": "Порти",
+        "env": "Змінні середовища",
+        "volumeMounts": "Монтування томів",
+        "probes": "Проби",
+        "livenessProbe": "Liveness",
+        "readinessProbe": "Readiness",
+        "startupProbe": "Startup",
+        "securityContext": "Контекст безпеки",
+        "privileged": "Привілейований",
+        "runAsUser": "Запуск від користувача",
+        "readOnlyFs": "Тільки читання FS",
+        "allowPrivEsc": "Дозволити ескалацію"
+      }
+    },
+    "logs": {
+      "container": "Контейнер",
+      "refresh": "Оновити логи",
+      "stopFollowing": "Зупинити відстеження",
+      "follow": "Відстежувати",
+      "loading": "Завантаження логів…",
+      "noLogs": "Логів немає."
+    },
+    "terminal": {
+      "container": "Контейнер",
+      "restart": "Перезапустити сесію",
+      "connecting": "Підключення…",
+      "notStarted": "Термінал не запущено."
+    },
+    "metrics": {
+      "loading": "Завантаження метрик…",
+      "noMetrics": "Метрик немає — чи встановлено metrics-server?",
+      "usage": "використання",
+      "request": "запит",
+      "limit": "ліміт"
+    },
+    "portForward": {
+      "title": "Port Forward",
+      "description": "Відкрити {{name}} на локальному порті.",
+      "remotePort": "Віддалений порт",
+      "forward": "Пробросити",
+      "noTunnels": "Немає активних тунелів для цього пода.",
+      "stop": "Зупинити port forward"
+    },
+    "manifest": {
+      "title": "{{title}}",
+      "noValues": "Значення не задано."
+    },
+    "delete": {
+      "title": "Видалити {{kind}}",
+      "description": "Це остаточно видалить {{name}} з кластера. Дія незворотна.",
+      "confirm": "Видалити"
+    },
+    "toasts": {
+      "resourceDeleted": "Ресурс видалено",
+      "manifestApplied": "Маніфест застосовано",
+      "portForwarded": "Порт {{port}} проброшено",
+      "portForwardStopped": "Port forward зупинено",
+      "releaseUninstalled": "Реліз \"{{name}}\" видалено",
+      "scaled": "Масштабовано до {{replicas}} реплік",
+      "restartRequested": "Перезапуск ініційовано"
+    }
+  },
+  "helm": {
+    "title": "Helm-релізи",
+    "installedCharts": "Встановлені чарти на {{name}}",
+    "noCluster": "Кластер не вибрано. Підключіть кластер, щоб переглядати Helm-релізи.",
+    "failedToLoad": "Не вдалося завантажити Helm-релізи",
+    "noReleases": "Helm-релізів не знайдено.",
+    "release": "Реліз",
+    "rev": "рев",
+    "chart": "Чарт",
+    "appVersion": "app v{{version}}",
+    "loading": "Завантаження релізу…",
+    "values": "Значення",
+    "manifest": "Маніфест",
+    "notes": "Нотатки",
+    "diff": "Диф",
+    "noValues": "Значення не задано.",
+    "deleteKind": "Helm-реліз",
+    "columns": {
+      "name": "Ім'я",
+      "namespace": "Простір",
+      "status": "Статус",
+      "chart": "Чарт",
+      "rev": "Рев",
+      "age": "Вік"
+    },
+    "diffTab": {
+      "baseRev": "Базова рев.",
+      "targetRev": "Цільова рев.",
+      "choose": "Оберіть дві різні ревізії для порівняння.",
+      "loading": "Завантаження ревізій…"
+    }
+  },
+  "topology": {
+    "title": "Топологія",
+    "summary": "Залежності у {{namespace}} · {{nodes}} вузлів, {{edges}} ребер",
+    "allNamespaces": "усі простори",
+    "noCluster": "Кластер не вибрано. Підключіть кластер, щоб побачити граф залежностей.",
+    "failedToLoad": "Не вдалося завантажити топологію",
+    "nothingToGraph": "Поки що нічого будувати.",
+    "loading": "Завантаження графа…",
+    "zoomOut": "Віддалити",
+    "zoomIn": "Наблизити",
+    "refresh": "Оновити топологію"
+  },
+  "updates": {
+    "checking": "Перевірка оновлень…",
+    "available": "KubeLens {{version}} доступний",
+    "downloading": "Завантаження оновлення…",
+    "downloadingProgress": "Завантаження оновлення… {{progress}}%",
+    "downloadOnGithub": "Завантажити з GitHub",
+    "openReleasePage": "Відкрити сторінку релізу на GitHub"
+  },
+  "header": {
+    "noCluster": "Кластер не підключено",
+    "connected": "підключено",
+    "offline": "офлайн",
+    "allNamespaces": "Усі простори",
+    "toggleTheme": "Змінити тему"
+  }
+}
