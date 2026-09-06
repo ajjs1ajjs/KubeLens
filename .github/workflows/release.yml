@@ -23,13 +23,13 @@ jobs:
         include:
           - name: Windows (x64)
             platform: windows-latest
-            args: --bundles nsis --config {"bundle":{"createUpdaterArtifacts":true}}
+            args: --bundles nsis --config src-tauri/updater-ci.conf.json
           - name: Ubuntu (x64)
             platform: ubuntu-22.04
-            args: --bundles deb,appimage --config {"bundle":{"createUpdaterArtifacts":true}}
+            args: --bundles deb,appimage --config src-tauri/updater-ci.conf.json
           - name: macOS (Apple Silicon)
             platform: macos-latest
-            args: --bundles dmg --config {"bundle":{"createUpdaterArtifacts":true}}
+            args: --bundles dmg --config src-tauri/updater-ci.conf.json
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
