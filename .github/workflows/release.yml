@@ -29,7 +29,9 @@ jobs:
             args: --bundles deb,appimage --config src-tauri/updater-ci.conf.json
           - name: macOS (Apple Silicon)
             platform: macos-latest
-            args: --bundles dmg --config src-tauri/updater-ci.conf.json
+            # "app" produces the .app.tar.gz updater artifact the in-app updater
+            # downloads; "dmg" is only the user-facing installer.
+            args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -134,6 +136,13 @@ jobs:
           merge-multiple: true
           path: artifacts
 
+      - name: Flatten artifacts
+        shell: bash
+        run: |
+          mkdir -p release-files
+          find artifacts -type f -exec mv {} release-files/ \;
+          ls -la release-files
+
       - name: Create latest.json (all platforms)
         shell: bash
         env:
@@ -145,11 +154,15 @@ jobs:
           const path = require('path');
           const tag = process.env.TAG;
           const version = tag.replace(/^v/, '');
-          const dir = 'artifacts';
+          const dir = 'release-files';
 
           const pick = (label, re) => {
             const file = fs.readdirSync(dir).find((n) => re.test(n));
-            if (!file) throw new Error(`Missing ${label} artifact matching ${re}`);
+            if (!file) {
+              throw new Error(
+                `Missing ${label} matching ${re}. Available: ${fs.readdirSync(dir).join(', ')}`,
+              );
+            }
             return file;
           };
           const sigOf = (name) =>
@@ -157,9 +170,9 @@ jobs:
           const url = (name) =>
             `https://github.com/ajjs1ajjs/KubeLens/releases/download/${tag}/${name}`;
 
-          const win = pick('Windows NSIS installer', /^KubeLens_.*_x64-setup\.exe$/);
-          const linux = pick('Linux AppImage', /^KubeLens_.*_amd64\.AppImage$/);
-          const macos = pick('macOS updater bundle', /^KubeLens_.*_aarch64\.app\.tar\.gz$/);
+          const win = pick('Windows NSIS installer', /x64-setup\.exe$/i);
+          const linux = pick('Linux AppImage', /amd64\.AppImage$/i);
+          const macos = pick('macOS updater bundle', /aarch64\.app\.tar\.gz$/i);
 
           const latest = {
             version,
@@ -186,7 +199,7 @@ jobs:
           prerelease: false
           generate_release_notes: false
           files: |
-            artifacts/*
+            release-files/*
             latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
