@@ -172,7 +172,7 @@ jobs:
 
           const win = pick('Windows NSIS installer', /x64-setup\.exe$/i);
           const linux = pick('Linux AppImage', /amd64\.AppImage$/i);
-          const macos = pick('macOS updater bundle', /aarch64\.app\.tar\.gz$/i);
+          const macos = pick('macOS updater bundle', /app\.tar\.gz$/i);
 
           const latest = {
             version,
