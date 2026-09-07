@@ -1,8 +1,15 @@
 name: Auto Release
 
+# Bumps the patch version on every push to main, then builds and publishes
+# installers for all three platforms — all inside this single workflow run
+# using the default GITHUB_TOKEN. No PAT (RELEASE_TOKEN) is required: the
+# builds run as jobs of this same run instead of relying on the tag push to
+# trigger release.yml, because events created with GITHUB_TOKEN never trigger
+# other workflows.
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,31 +20,25 @@ concurrency:
 
 jobs:
   bump:
-    if: "!contains(github.event.head_commit.message, 'chore: release')"
+    name: Bump version and tag
+    if: "github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'chore: release')"
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+      skipped: ${{ steps.bump.outputs.skipped }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          # A PAT is required here (not the default GITHUB_TOKEN): GitHub does not
-          # let a GITHUB_TOKEN-authored push trigger another workflow, so the tag
-          # push below would silently fail to kick off release.yml otherwise.
-          # Fallback to GITHUB_TOKEN keeps checkout working even if RELEASE_TOKEN is not configured (bump will be skipped below).
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Bump patch version and tag
+        id: bump
         env:
-          # commit message and secret presence are passed via env (never
-          # interpolated directly into the shell script — template injection)
           HEAD_MSG: ${{ github.event.head_commit.message }}
-          HAS_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
         run: |
           if [[ "$HEAD_MSG" == ci:* ]]; then
             echo "ci commit — skipping auto-release bump"
-            exit 0
-          fi
-          if [ "$HAS_RELEASE_TOKEN" != "true" ]; then
-            echo "::warning::RELEASE_TOKEN not set — skipping auto-release bump. Set PAT to enable."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           set -euo pipefail
@@ -88,3 +89,194 @@ jobs:
           git tag "$TAG"
           git push origin HEAD:main
           git push origin "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: bump
+    if: needs.bump.outputs.skipped != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (x64)
+            platform: windows-latest
+            args: --bundles nsis --config src-tauri/updater-ci.conf.json
+          - name: Ubuntu (x64)
+            platform: ubuntu-22.04
+            args: --bundles deb,appimage --config src-tauri/updater-ci.conf.json
+          - name: macOS (Apple Silicon)
+            platform: macos-latest
+            # "app" produces the .app.tar.gz updater artifact the in-app updater
+            # downloads; "dmg" is only the user-facing installer.
+            args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.bump.outputs.tag }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify version sync (tag vs manifests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.bump.outputs.tag }}"
+          VER="${TAG#v}"
+          PKG=$(node -p "require('./package.json').version")
+          TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)"/\1/')
+          echo "Tag: $TAG  expected version: $VER"
+          echo "package.json: $PKG"
+          echo "tauri.conf.json: $TAURI"
+          echo "Cargo.toml: $CARGO"
+          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" ]]; then
+            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO"
+            exit 1
+          fi
+          echo "Version check passed: $VER"
+
+      - name: Check updater signing key is configured
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY secret is not set. The in-app updater requires signed artifacts — add the minisign private key to repository secrets."
+            exit 1
+          fi
+
+      - name: Build Tauri app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- ${{ matrix.args }}
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-windows
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.exe.sig
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-linux
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/appimage/*.AppImage.sig
+
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-macos
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+
+  publish:
+    name: Publish release
+    needs: [bump, build]
+    if: needs.bump.outputs.skipped != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          merge-multiple: true
+          path: artifacts
+
+      - name: Flatten artifacts
+        shell: bash
+        run: |
+          mkdir -p release-files
+          find artifacts -type f -exec mv {} release-files/ \;
+          ls -la release-files
+
+      - name: Create latest.json (all platforms)
+        shell: bash
+        env:
+          TAG: ${{ needs.bump.outputs.tag }}
+        run: |
+          set -euo pipefail
+          node <<'NODEEOF'
+          const fs = require('fs');
+          const path = require('path');
+          const tag = process.env.TAG;
+          const version = tag.replace(/^v/, '');
+          const dir = 'release-files';
+
+          const pick = (label, re) => {
+            const file = fs.readdirSync(dir).find((n) => re.test(n));
+            if (!file) {
+              throw new Error(
+                `Missing ${label} matching ${re}. Available: ${fs.readdirSync(dir).join(', ')}`,
+              );
+            }
+            return file;
+          };
+          const sigOf = (name) =>
+            fs.readFileSync(path.join(dir, name + '.sig'), 'utf8').replace(/\s+/g, '');
+          const url = (name) =>
+            `https://github.com/ajjs1ajjs/KubeLens/releases/download/${tag}/${name}`;
+
+          const win = pick('Windows NSIS installer', /x64-setup\.exe$/i);
+          const linux = pick('Linux AppImage', /amd64\.AppImage$/i);
+          const macos = pick('macOS updater bundle', /app\.tar\.gz$/i);
+
+          const latest = {
+            version,
+            platforms: {
+              'windows-x86_64': { signature: sigOf(win), url: url(win) },
+              'linux-x86_64': { signature: sigOf(linux), url: url(linux) },
+              'darwin-aarch64': { signature: sigOf(macos), url: url(macos) },
+            },
+          };
+          fs.writeFileSync('latest.json', JSON.stringify(latest, null, 2) + '\n');
+          console.log(fs.readFileSync('latest.json', 'utf8'));
+          NODEEOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.bump.outputs.tag }}
+          name: KubeLens ${{ needs.bump.outputs.tag }}
+          body: |
+            Installers: Windows (NSIS), Ubuntu (deb + AppImage), macOS Apple Silicon (dmg).
+
+            The app checks for updates on startup and installs them in place — no manual download needed.
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          files: |
+            release-files/*
+            latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
