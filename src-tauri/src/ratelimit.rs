@@ -73,13 +73,7 @@ impl RateLimiter {
         }
     }
 
-    /// Clears old buckets to prevent memory growth.
-    pub fn cleanup_old_buckets(&self, max_age: Duration) {
-        let mut buckets = self.buckets.lock().unwrap();
-        let now = Instant::now();
-        buckets.retain(|_, bucket| now.duration_since(bucket.last_refill) < max_age);
     }
-}
 
 /// Global rate limiter instance.
 static RATE_LIMITER: std::sync::OnceLock<RateLimiter> = std::sync::OnceLock::new();
