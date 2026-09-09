@@ -72,8 +72,7 @@ impl RateLimiter {
             (false, Some(retry_after))
         }
     }
-
-    }
+}
 
 /// Global rate limiter instance.
 static RATE_LIMITER: std::sync::OnceLock<RateLimiter> = std::sync::OnceLock::new();
