@@ -1,11 +1,18 @@
 mod commands;
 mod k8s;
 mod kubeconfig;
+mod logging;
+mod ratelimit;
 
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize structured logging.
+    logging::init_logging();
+
+    // Initialize rate limiter.
+    ratelimit::init_rate_limiter();
     tauri::Builder::default()
         .manage(k8s::cluster_manager::ClusterManager::default())
         .manage(k8s::watch::WatchManager::default())
@@ -18,6 +25,9 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            // Initialize rate limiter cleanup task.
+            let _ = ratelimit::rate_limiter();
+
             // Seed the cluster manager from persisted settings.
             let manager = app.state::<k8s::cluster_manager::ClusterManager>();
             let dir = app

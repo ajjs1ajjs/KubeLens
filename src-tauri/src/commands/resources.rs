@@ -4,6 +4,8 @@ use crate::k8s::cluster_manager::ClusterManager;
 use crate::k8s::models::ResourceContext;
 use crate::k8s::resources;
 use crate::k8s::watch::WatchManager;
+use crate::ratelimit::check_rate_limit;
+use kube::api::ListParams;
 
 /// Lists resources matching the given context.
 #[tauri::command]
@@ -31,6 +33,8 @@ pub async fn delete_resource(
     ctx: ResourceContext,
     name: String,
 ) -> Result<(), String> {
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("mutating", &key)?;
     resources::delete(&manager, &ctx, &name).await
 }
 
@@ -41,6 +45,8 @@ pub async fn apply_yaml(
     ctx: ResourceContext,
     yaml: String,
 ) -> Result<serde_json::Value, String> {
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("mutating", &key)?;
     resources::apply_yaml(&manager, &ctx, &yaml).await
 }
 
@@ -52,6 +58,8 @@ pub async fn scale_resource(
     name: String,
     replicas: i32,
 ) -> Result<(), String> {
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("mutating", &key)?;
     resources::scale(&manager, &ctx, &name, replicas).await
 }
 
@@ -62,6 +70,8 @@ pub async fn restart_resource(
     ctx: ResourceContext,
     name: String,
 ) -> Result<(), String> {
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("mutating", &key)?;
     resources::restart(&manager, &ctx, &name).await
 }
 
@@ -73,6 +83,8 @@ pub async fn start_watch(
     watch: State<'_, WatchManager>,
     ctx: ResourceContext,
 ) -> Result<String, String> {
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("watch", &key)?;
     watch.start(&manager, app, ctx).await
 }
 
@@ -99,10 +111,20 @@ pub async fn list_namespaces(
         namespaced: false,
         namespace: String::new(),
     };
-    let objects = resources::list(&manager, &ctx).await?;
-    let mut names: Vec<String> = objects
+    let client = manager.client_ctx(&ctx).await?;
+    let api = resources::api(&client, &ctx);
+    // Use pagination to avoid fetching all namespaces at once on large clusters.
+    let list = api
+        .list(&ListParams {
+            limit: Some(500),
+            ..Default::default()
+        })
+        .await
+        .map_err(crate::k8s::resources::kube_error)?;
+    let mut names: Vec<String> = list
+        .items
         .iter()
-        .filter_map(|o| o.pointer("/metadata/name").and_then(|v| v.as_str()))
+        .filter_map(|o| o.data.pointer("/metadata/name").and_then(|v| v.as_str()))
         .map(|s| s.to_string())
         .collect();
     names.sort();

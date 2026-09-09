@@ -70,6 +70,10 @@ pub async fn delete(
 
 /// Parses a YAML document into a JSON value.
 pub fn parse_yaml(yaml: &str) -> Result<serde_json::Value, String> {
+    const MAX_YAML_SIZE: usize = 1024 * 1024; // 1 MB
+    if yaml.len() > MAX_YAML_SIZE {
+        return Err("YAML document exceeds 1 MB limit".into());
+    }
     serde_yaml::from_str::<serde_json::Value>(yaml)
         .map_err(|e| format!("Failed to parse YAML: {e}"))
 }
@@ -135,7 +139,7 @@ pub async fn apply_yaml(
     serde_json::to_value(&applied).map_err(|e| format!("Failed to serialize: {e}"))
 }
 
-fn kube_error(err: kube::Error) -> String {
+pub fn kube_error(err: kube::Error) -> String {
     format!("Kubernetes API error: {err}")
 }
 

@@ -392,7 +392,7 @@ impl PortForwardManager {
         let stream = pf
             .take_stream(remote_port)
             .ok_or_else(|| "Port-forward stream was not available".to_string())?;
-        let mut pod_duplex = stream;
+        let pod_duplex = std::sync::Arc::new(tokio::sync::Mutex::new(stream));
 
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
@@ -402,15 +402,30 @@ impl PortForwardManager {
             .map_err(|e| format!("Failed to read local port: {e}"))?
             .port();
 
+        const MAX_CONCURRENT_CONNECTIONS: usize = 10;
+        let semaphore =
+            std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_CONNECTIONS));
+
         let id = uuid::Uuid::new_v4().to_string();
         let task = tokio::spawn(async move {
             loop {
                 let Ok((mut conn, _)) = listener.accept().await else {
                     break;
                 };
-                // Proxy one connection at a time; `copy_bidirectional` handles
-                // both directions and closes cleanly when either side EOFs.
-                let _ = tokio::io::copy_bidirectional(&mut conn, &mut pod_duplex).await;
+                let permit = match semaphore.clone().try_acquire_owned() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        // Too many concurrent connections, reject this one
+                        let _ = conn.shutdown().await;
+                        continue;
+                    }
+                };
+                let pod_duplex = pod_duplex.clone();
+                tokio::spawn(async move {
+                    let mut pod_duplex = pod_duplex.lock().await;
+                    let _ = tokio::io::copy_bidirectional(&mut conn, &mut *pod_duplex).await;
+                    drop(permit);
+                });
             }
         });
         let abort_handle = task.abort_handle();

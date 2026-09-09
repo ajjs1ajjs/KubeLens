@@ -1,8 +1,11 @@
 use tauri::{AppHandle, State};
+use tracing::{info, warn};
 
 use crate::k8s::cluster_manager::ClusterManager;
 use crate::k8s::interactive::{LogManager, PortForwardManager, TerminalManager};
 use crate::k8s::models::{PortForwardInfo, PortForwardStart, ResourceContext};
+use crate::logging::correlation_id;
+use crate::ratelimit::check_rate_limit;
 
 /// Fetches a pod's logs (no follow) as a single text blob.
 #[tauri::command]
@@ -13,7 +16,14 @@ pub async fn get_logs(
     container: Option<String>,
     tail_lines: Option<i64>,
 ) -> Result<String, String> {
-    crate::k8s::interactive::pod_logs(&manager, &ctx, &name, container, tail_lines).await
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, pod = %name, container = ?container, "Fetching pod logs");
+    let result =
+        crate::k8s::interactive::pod_logs(&manager, &ctx, &name, container, tail_lines).await;
+    if result.is_err() {
+        warn!(correlation_id = %correlation_id, "Failed to fetch pod logs");
+    }
+    result
 }
 
 /// Starts following pod logs, returning the subscription id. Lines arrive as
@@ -27,12 +37,18 @@ pub async fn follow_logs(
     name: String,
     container: Option<String>,
 ) -> Result<String, String> {
+    let correlation_id = correlation_id();
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("logs", &key)?;
+    info!(correlation_id = %correlation_id, pod = %name, container = ?container, "Starting log follow");
     logs.start(&manager, app, ctx, name, container).await
 }
 
 /// Stops a follow-log subscription by id.
 #[tauri::command]
 pub fn stop_follow_logs(logs: State<'_, LogManager>, id: String) -> Result<(), String> {
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, log_id = %id, "Stopping log follow");
     logs.stop(&id);
     Ok(())
 }
@@ -49,6 +65,10 @@ pub async fn exec_shell(
     container: Option<String>,
     command: Vec<String>,
 ) -> Result<String, String> {
+    let correlation_id = correlation_id();
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("exec", &key)?;
+    info!(correlation_id = %correlation_id, pod = %name, container = ?container, command = ?command, "Starting exec session");
     terminals
         .start(&manager, app, ctx, name, container, command)
         .await
@@ -67,6 +87,8 @@ pub fn exec_input(
 /// Terminates an exec terminal session.
 #[tauri::command]
 pub fn stop_exec(terminals: State<'_, TerminalManager>, id: String) -> Result<(), String> {
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, exec_id = %id, "Stopping exec session");
     terminals.stop(&id);
     Ok(())
 }
@@ -80,6 +102,10 @@ pub async fn start_port_forward(
     name: String,
     remote_port: u16,
 ) -> Result<PortForwardStart, String> {
+    let correlation_id = correlation_id();
+    let key = format!("{}:{}", ctx.config_id, ctx.context);
+    check_rate_limit("port_forward", &key)?;
+    info!(correlation_id = %correlation_id, pod = %name, remote_port = remote_port, "Starting port forward");
     forwards.start(&manager, ctx, name, remote_port).await
 }
 
@@ -95,6 +121,8 @@ pub fn stop_port_forward(
     forwards: State<'_, PortForwardManager>,
     id: String,
 ) -> Result<(), String> {
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, port_forward_id = %id, "Stopping port forward");
     forwards.stop(&id);
     Ok(())
 }

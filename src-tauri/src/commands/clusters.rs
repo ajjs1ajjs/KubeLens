@@ -1,10 +1,44 @@
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::k8s::cluster_manager::{
     ClusterManager, config_entries_from_stored, default_config_name,
 };
 use crate::k8s::models::{ClusterConfig, ClusterSummary};
+use crate::logging::correlation_id;
+
+/// Returns the allowed base directories for kubeconfig files.
+fn allowed_kubeconfig_dirs(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
+    let mut dirs = Vec::new();
+
+    // App config directory (always allowed)
+    let app_config_dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
+    dirs.push(app_config_dir);
+
+    // User's .kube directory (standard location)
+    if let Some(home) = dirs::home_dir() {
+        dirs.push(home.join(".kube"));
+    }
+
+    Ok(dirs)
+}
+
+/// Checks if a path is within one of the allowed base directories.
+fn is_path_allowed(path: &Path, allowed_dirs: &[PathBuf]) -> bool {
+    allowed_dirs.iter().any(|base| {
+        path.starts_with(base)
+            || path == base
+            || path
+                .strip_prefix(base)
+                .map(|p| !p.components().any(|c| c.as_os_str() == ".."))
+                .unwrap_or(false)
+    })
+}
 
 /// Lists all contexts from the active kubeconfig without connecting.
 #[tauri::command]
@@ -95,22 +129,33 @@ pub fn add_cluster_config(
     path: String,
     manager: State<'_, ClusterManager>,
 ) -> Result<Vec<ClusterConfig>, String> {
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, "Adding cluster config");
+
     let dir = app
         .path()
         .app_config_dir()
         .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
-    // Validate the path before persisting anything.
-    let pb = std::path::PathBuf::from(&path);
-    let metadata =
-        std::fs::metadata(&pb).map_err(|e| format!("Kubeconfig path is not accessible: {e}"))?;
+
+    // Validate the path is within allowed directories before persisting.
+    let allowed_dirs = allowed_kubeconfig_dirs(&app)?;
+    let pb = PathBuf::from(&path);
+    let canonical = std::fs::canonicalize(&pb)
+        .map_err(|e| format!("Failed to resolve kubeconfig path: {e}"))?;
+
+    if !is_path_allowed(&canonical, &allowed_dirs) {
+        warn!(correlation_id = %correlation_id, path = %canonical.display(), "Rejected kubeconfig path outside allowed directories");
+        return Err("Kubeconfig must be located under ~/.kube/ or the app config directory".into());
+    }
+
+    let metadata = std::fs::metadata(&canonical)
+        .map_err(|e| format!("Kubeconfig path is not accessible: {e}"))?;
     if !metadata.is_file() {
         return Err(format!(
             "Kubeconfig path is not a regular file: {}",
-            pb.display()
+            canonical.display()
         ));
     }
-    let canonical = std::fs::canonicalize(&pb)
-        .map_err(|e| format!("Failed to resolve kubeconfig path: {e}"))?;
     let canonical_str = canonical.to_string_lossy().into_owned();
 
     let mut stored = crate::kubeconfig::load_cluster_configs(&dir);
@@ -119,6 +164,7 @@ pub fn add_cluster_config(
         .iter()
         .any(|v| v.get("path").and_then(|p| p.as_str()) == Some(canonical_str.as_str()))
     {
+        info!(correlation_id = %correlation_id, "Kubeconfig already exists, skipping");
         return manager.list_configs();
     }
     let id = Uuid::new_v4().to_string();
@@ -132,6 +178,7 @@ pub fn add_cluster_config(
     }
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
     manager.set_configs(config_entries_from_stored(&stored), active)?;
+    info!(correlation_id = %correlation_id, config_id = %id, name = %name, "Cluster config added successfully");
     manager.list_configs()
 }
 
@@ -167,6 +214,9 @@ pub fn remove_cluster_config(
     id: String,
     manager: State<'_, ClusterManager>,
 ) -> Result<Vec<ClusterConfig>, String> {
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, config_id = %id, "Removing cluster config");
+
     let dir = app
         .path()
         .app_config_dir()
@@ -179,6 +229,7 @@ pub fn remove_cluster_config(
     }
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
     manager.set_configs(config_entries_from_stored(&stored), active)?;
+    info!(correlation_id = %correlation_id, "Cluster config removed successfully");
     manager.list_configs()
 }
 
@@ -189,6 +240,9 @@ pub fn set_active_cluster_config(
     id: Option<String>,
     manager: State<'_, ClusterManager>,
 ) -> Result<Vec<ClusterConfig>, String> {
+    let correlation_id = correlation_id();
+    info!(correlation_id = %correlation_id, config_id = ?id, "Setting active cluster config");
+
     let dir = app
         .path()
         .app_config_dir()
@@ -196,5 +250,6 @@ pub fn set_active_cluster_config(
     let stored = crate::kubeconfig::load_cluster_configs(&dir);
     crate::kubeconfig::save_cluster_configs(&dir, &stored, id.as_deref());
     manager.set_active_config(id.clone())?;
+    info!(correlation_id = %correlation_id, "Active cluster config updated successfully");
     manager.list_configs()
 }

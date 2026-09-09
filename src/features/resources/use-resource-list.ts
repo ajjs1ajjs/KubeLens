@@ -90,6 +90,15 @@ export function useResourceList(ctx: ResourceContext | null) {
 
     const scheduleReconnect = () => {
       if (disposed) return;
+      // Cancel OLD subscription BEFORE starting new one to prevent race conditions
+      if (unlisten) {
+        unlisten();
+        unlisten = undefined;
+      }
+      if (watchId) {
+        void k8sApi.stopWatch(watchId);
+        watchId = undefined;
+      }
       setWatching(false);
       setWatchError((current) => current ?? "watch failed");
       // Exponential backoff with jitter, capped at 30s.

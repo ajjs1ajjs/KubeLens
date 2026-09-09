@@ -35,5 +35,8 @@ uuid = { version = "1", features = ["v4"] }
 prost = { version = "0.14", features = ["derive"] }
 flate2 = "1"
 base64 = "0.22"
+dirs = "6"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
