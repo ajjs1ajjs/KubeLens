@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.18
+## v0.3.19
 
 - **Build errors fixed:** resolved unresolved `Kubeconfig` import, removed invalid `?` operator usage on `save_cluster_configs` (which returns `()`), and cleaned up unused imports in `clusters.rs`.
 
