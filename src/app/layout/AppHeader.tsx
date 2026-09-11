@@ -3,15 +3,9 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useActiveCluster, useClusterStore } from "@/features/clusters/cluster-store";
 import { useNamespaces } from "@/features/clusters/use-clusters";
+import { NamespaceSelect } from "@/features/clusters/NamespaceSelect";
 
 export function AppHeader() {
   const { t } = useTranslation();
@@ -49,19 +43,12 @@ export function AppHeader() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Select disabled={!connected} value={activeNamespace} onValueChange={setActiveNamespace}>
-          <SelectTrigger className="w-44" aria-label="Namespace">
-            <SelectValue placeholder={t("header.allNamespaces")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">{t("header.allNamespaces")}</SelectItem>
-            {namespaces.map((namespace) => (
-              <SelectItem key={namespace} value={namespace}>
-                {namespace}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NamespaceSelect
+          disabled={!connected}
+          value={activeNamespace}
+          onChange={setActiveNamespace}
+          namespaces={namespaces}
+        />
 
         <Button
           variant="ghost"

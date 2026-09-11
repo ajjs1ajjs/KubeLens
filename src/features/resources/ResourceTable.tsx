@@ -43,7 +43,18 @@ export function ResourceTable({
       id: c.id,
       header: c.header,
       accessorKey: c.accessorKey,
-      enableSorting: Boolean(c.accessorKey),
+      enableSorting: Boolean(c.accessorKey) || Boolean(c.sortingValue),
+      sortingFn: c.sortingValue
+        ? (rowA, rowB) => {
+            const av = c.sortingValue!(rowA.original);
+            const bv = c.sortingValue!(rowB.original);
+            if (av == null && bv == null) return 0;
+            if (av == null) return 1;
+            if (bv == null) return -1;
+            if (typeof av === "number" && typeof bv === "number") return av - bv;
+            return String(av).localeCompare(String(bv));
+          }
+        : undefined,
       cell: ({ row }) => c.cell(row.original),
     }));
 

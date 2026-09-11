@@ -21,6 +21,8 @@ export interface ResourceColumn {
   header: string;
   /** Optional key for sorting (TanStack accessorKey). */
   accessorKey?: string;
+  /** Optional custom sorting function that extracts a sortable value. */
+  sortingValue?: (obj: K8sObject) => string | number | null | undefined;
   /** Renders the cell for an object. */
   cell: (obj: K8sObject) => ReactNode;
 }
@@ -226,20 +228,49 @@ export function resourceColumns(
       return [
         name,
         namespace,
-        { id: "ready", header: tr("resources.columns.ready"), cell: (o) => <PodReady obj={o} /> },
-        { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
+        {
+          id: "ready",
+          header: tr("resources.columns.ready"),
+          cell: (o) => <PodReady obj={o} />,
+          accessorKey: "status.containerStatuses",
+        },
+        {
+          id: "status",
+          header: tr("resources.columns.status"),
+          cell: (o) => <Phase obj={o} />,
+          accessorKey: "status.phase",
+        },
         {
           id: "restarts",
           header: tr("resources.columns.restarts"),
           cell: (o) => <RestartsCell obj={o} />,
+          sortingValue: (o) => podSummary(o).restarts ?? 0,
         },
         {
           id: "controlled-by",
           header: tr("resources.columns.controlledBy"),
           cell: (o) => <ControlledByCell obj={o} />,
+          sortingValue: (o) => {
+            const refs = readPath(o, "/metadata/ownerReferences");
+            if (Array.isArray(refs) && refs.length > 0) {
+              const first = refs[0] as Record<string, unknown>;
+              return `${String(first.kind ?? "")}/${String(first.name ?? "")}`;
+            }
+            return null;
+          },
         },
-        { id: "node", header: tr("resources.columns.node"), cell: (o) => <NodeCell obj={o} /> },
-        { id: "qos", header: tr("resources.columns.qos"), cell: (o) => <QosCell obj={o} /> },
+        {
+          id: "node",
+          header: tr("resources.columns.node"),
+          cell: (o) => <NodeCell obj={o} />,
+          accessorKey: "spec.nodeName",
+        },
+        {
+          id: "qos",
+          header: tr("resources.columns.qos"),
+          cell: (o) => <QosCell obj={o} />,
+          accessorKey: "status.qosClass",
+        },
         ...(metrics ? metricColumns(metrics, tr) : []),
         age,
       ];
@@ -261,6 +292,7 @@ export function resourceColumns(
           id: "completions",
           header: tr("resources.columns.completions"),
           cell: (o) => <Replicas obj={o} />,
+          accessorKey: "status.succeeded",
         },
         age,
       ];
@@ -293,6 +325,7 @@ export function resourceColumns(
           id: "status",
           header: tr("resources.columns.status"),
           cell: (o) => <NodeStatus obj={o} />,
+          sortingValue: (o) => (nodeReady(o) ? 1 : 0),
         },
         {
           id: "roles",
@@ -300,11 +333,13 @@ export function resourceColumns(
           cell: (o) => (
             <span className="text-muted-foreground">{nodeRoles(o).join(", ") || "—"}</span>
           ),
+          sortingValue: (o) => nodeRoles(o).join(","),
         },
         ...(metrics ? metricColumns(metrics, tr) : []),
         {
           id: "version",
           header: tr("resources.columns.version"),
+          accessorKey: "status.nodeInfo.kubeletVersion",
           cell: (o) => (
             <span className="text-muted-foreground">
               {String(readPath(o, "/status/nodeInfo/kubeletVersion") ?? "—")}
@@ -316,7 +351,12 @@ export function resourceColumns(
     case "Namespace":
       return [
         name,
-        { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
+        {
+          id: "status",
+          header: tr("resources.columns.status"),
+          cell: (o) => <Phase obj={o} />,
+          accessorKey: "status.phase",
+        },
         age,
       ];
     case "ConfigMap":
@@ -328,6 +368,12 @@ export function resourceColumns(
           id: "data",
           header: tr("resources.columns.data"),
           cell: (o) => <DataCount obj={o} path={kind === "Secret" ? "/data" : "/data"} />,
+          sortingValue: (o) => {
+            const data = readPath(o, "/data");
+            return data && typeof data === "object"
+              ? Object.keys(data as Record<string, unknown>).length
+              : 0;
+          },
         },
         age,
       ];
@@ -336,7 +382,12 @@ export function resourceColumns(
       return [
         name,
         namespace,
-        { id: "status", header: tr("resources.columns.status"), cell: (o) => <Phase obj={o} /> },
+        {
+          id: "status",
+          header: tr("resources.columns.status"),
+          cell: (o) => <Phase obj={o} />,
+          accessorKey: "status.phase",
+        },
         {
           id: "capacity",
           header: tr("resources.columns.capacity"),
@@ -371,6 +422,7 @@ export function resourceColumns(
               {String(readPath(o, "/status/loadBalancer/ingress/0/ip") ?? "—")}
             </span>
           ),
+          sortingValue: (o) => String(readPath(o, "/status/loadBalancer/ingress/0/ip") ?? ""),
         },
         age,
       ];
@@ -382,6 +434,7 @@ export function resourceColumns(
           id: "status",
           header: tr("resources.columns.status"),
           cell: (o) => <GenericStatus obj={o} />,
+          accessorKey: "status.phase",
         },
         age,
       ];
