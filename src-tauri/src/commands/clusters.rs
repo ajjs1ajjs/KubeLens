@@ -28,8 +28,6 @@ fn allowed_kubeconfig_dirs(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
     Ok(dirs)
 }
 
-
-
 /// Normalizes a path for case-insensitive comparison on Windows.
 /// Returns the path as a lowercase string on Windows, or the display string on other platforms.
 fn normalize_for_comparison(path: &Path) -> String {
@@ -48,8 +46,7 @@ fn is_path_allowed_normalized(path: &Path, allowed_dirs: &[PathBuf]) -> bool {
     let path_str = normalize_for_comparison(path);
     allowed_dirs.iter().any(|base| {
         let base_str = normalize_for_comparison(base);
-        path_str.starts_with(&base_str)
-            || path_str == base_str
+        path_str.starts_with(&base_str) || path_str == base_str
     })
 }
 
