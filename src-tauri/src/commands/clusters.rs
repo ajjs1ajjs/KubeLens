@@ -28,15 +28,28 @@ fn allowed_kubeconfig_dirs(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
     Ok(dirs)
 }
 
-/// Checks if a path is within one of the allowed base directories.
-fn is_path_allowed(path: &Path, allowed_dirs: &[PathBuf]) -> bool {
+
+
+/// Normalizes a path for case-insensitive comparison on Windows.
+/// Returns the path as a lowercase string on Windows, or the display string on other platforms.
+fn normalize_for_comparison(path: &Path) -> String {
+    #[cfg(windows)]
+    {
+        path.to_string_lossy().to_lowercase()
+    }
+    #[cfg(not(windows))]
+    {
+        path.display().to_string()
+    }
+}
+
+/// Checks if a path is within one of the allowed base directories (case-insensitive on Windows).
+fn is_path_allowed_normalized(path: &Path, allowed_dirs: &[PathBuf]) -> bool {
+    let path_str = normalize_for_comparison(path);
     allowed_dirs.iter().any(|base| {
-        path.starts_with(base)
-            || path == base
-            || path
-                .strip_prefix(base)
-                .map(|p| !p.components().any(|c| c.as_os_str() == ".."))
-                .unwrap_or(false)
+        let base_str = normalize_for_comparison(base);
+        path_str.starts_with(&base_str)
+            || path_str == base_str
     })
 }
 
@@ -143,7 +156,7 @@ pub fn add_cluster_config(
     let canonical = std::fs::canonicalize(&pb)
         .map_err(|e| format!("Failed to resolve kubeconfig path: {e}"))?;
 
-    if !is_path_allowed(&canonical, &allowed_dirs) {
+    if !is_path_allowed_normalized(&canonical, &allowed_dirs) {
         warn!(correlation_id = %correlation_id, path = %canonical.display(), "Rejected kubeconfig path outside allowed directories");
         return Err("Kubeconfig must be located under ~/.kube/ or the app config directory".into());
     }
