@@ -267,7 +267,13 @@
       "portForwardStopped": "Port forward зупинено",
       "releaseUninstalled": "Реліз \"{{name}}\" видалено",
       "scaled": "Масштабовано до {{replicas}} реплік",
-      "restartRequested": "Перезапуск ініційовано"
+      "restartRequested": "Перезапуск ініційовано",
+      "configAdded": "Конфіг кластера додано",
+      "configAddFailed": "Не вдалося додати конфіг кластера: {{error}}",
+      "configRemoved": "Конфіг кластера видалено",
+      "configRemoveFailed": "Не вдалося видалити конфіг кластера: {{error}}",
+      "configRenamed": "Конфіг кластера перейменовано",
+      "configRenameFailed": "Не вдалося перейменувати конфіг кластера: {{error}}"
     }
   },
   "helm": {

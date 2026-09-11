@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   Check,
   GitBranch,
@@ -196,8 +197,13 @@ export function AppSidebar() {
   const addConfig = async () => {
     const picked = await open({ multiple: false, directory: false });
     if (typeof picked !== "string") return;
-    await k8sApi.addClusterConfig(picked);
-    await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+    try {
+      await k8sApi.addClusterConfig(picked);
+      await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+      toast.success(t("resources.toasts.configAdded"));
+    } catch (error) {
+      toast.error(t("resources.toasts.configAddFailed", { error: String(error) }));
+    }
   };
 
   const saveRename = async () => {
@@ -208,7 +214,10 @@ export function AppSidebar() {
     try {
       await k8sApi.renameClusterConfig(renaming.id, name);
       await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+      toast.success(t("resources.toasts.configRenamed"));
       setRenaming(null);
+    } catch (error) {
+      toast.error(t("resources.toasts.configRenameFailed", { error: String(error) }));
     } finally {
       setSavingRename(false);
     }

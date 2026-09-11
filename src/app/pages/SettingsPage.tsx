@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { Check, FolderOpen, Monitor, Moon, Pencil, RefreshCw, Sun, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -76,8 +77,13 @@ export function SettingsPage() {
     try {
       const picked = await open({ multiple: false, directory: false });
       if (typeof picked === "string") {
-        await k8sApi.addClusterConfig(picked);
-        await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+        try {
+          await k8sApi.addClusterConfig(picked);
+          await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+          toast.success(t("resources.toasts.configAdded"));
+        } catch (error) {
+          toast.error(t("resources.toasts.configAddFailed", { error: String(error) }));
+        }
       }
     } finally {
       setPicking(false);
@@ -107,15 +113,23 @@ export function SettingsPage() {
     try {
       await k8sApi.renameClusterConfig(editingConfigId, trimmed);
       await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+      toast.success(t("resources.toasts.configRenamed"));
       cancelRename();
+    } catch (error) {
+      toast.error(t("resources.toasts.configRenameFailed", { error: String(error) }));
     } finally {
       setSavingConfig(false);
     }
   };
 
   const removeConfig = async (id: string) => {
-    await k8sApi.removeClusterConfig(id);
-    await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+    try {
+      await k8sApi.removeClusterConfig(id);
+      await queryClient.invalidateQueries({ queryKey: ["cluster-configs"] });
+      toast.success(t("resources.toasts.configRemoved"));
+    } catch (error) {
+      toast.error(t("resources.toasts.configRemoveFailed", { error: String(error) }));
+    }
   };
 
   return (

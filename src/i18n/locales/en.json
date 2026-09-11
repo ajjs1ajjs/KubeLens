@@ -267,7 +267,13 @@
       "portForwardStopped": "Port forward stopped",
       "releaseUninstalled": "Release \"{{name}}\" uninstalled",
       "scaled": "Scaled to {{replicas}} replicas",
-      "restartRequested": "Restart requested"
+      "restartRequested": "Restart requested",
+      "configAdded": "Cluster config added",
+      "configAddFailed": "Failed to add cluster config: {{error}}",
+      "configRemoved": "Cluster config removed",
+      "configRemoveFailed": "Failed to remove cluster config: {{error}}",
+      "configRenamed": "Cluster config renamed",
+      "configRenameFailed": "Failed to rename cluster config: {{error}}"
     }
   },
   "helm": {
