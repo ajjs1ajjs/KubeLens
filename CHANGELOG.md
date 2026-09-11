@@ -1,6 +1,10 @@
 # Changelog
 
-## v0.3.0
+## v0.3.14
+
+- **Windows path fix:** Fixed case-insensitive path comparison in `add_cluster_config` that was rejecting valid kubeconfig files on Windows when path casing didn't match. The function now correctly handles Windows' case-insensitive filesystem.
+
+## v0.3.13
 
 - **Lens-style Pod table:** new columns Restarts, Controlled By, Node, QoS alongside the existing Name, Namespace, Ready, Status, CPU, Memory, Age. QoS is color-coded (Guaranteed/Burstable/BestEffort).
 - **Lens-style row actions menu:** the trailing `⋯` icon on every row opens a context menu with kind-aware actions: View YAML / Edit / Delete for everything; **Logs**, **Exec**, **Port Forward** for Pod; **Scale** for Deployment/StatefulSet/ReplicaSet; **Restart** for Deployment/StatefulSet/DaemonSet/CronJob.
