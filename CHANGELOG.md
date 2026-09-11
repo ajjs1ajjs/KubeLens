@@ -1,8 +1,8 @@
 # Changelog
 
-## v0.3.19
+## v0.3.20
 
-- **Build errors fixed:** resolved unresolved `Kubeconfig` import, removed invalid `?` operator usage on `save_cluster_configs` (which returns `()`), and cleaned up unused imports in `clusters.rs`.
+- **CI clippy errors fixed:** replaced `unwrap_or_else(|| "kubeconfig")` with `unwrap_or("kubeconfig")`, collapsed nested `if let` statements, and added `#[allow(dead_code)]` to unused `default_config_name` function.
 
 ## v0.3.0
 

@@ -292,6 +292,7 @@ pub fn config_entries_from_stored(stored: &[serde_json::Value]) -> Vec<ClusterCo
 }
 
 /// Derives a display name from a kubeconfig file path (its file stem).
+#[allow(dead_code)]
 pub fn default_config_name(path: &str) -> String {
     std::path::Path::new(path)
         .file_stem()

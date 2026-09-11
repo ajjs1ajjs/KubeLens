@@ -1,24 +1,53 @@
-use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
-use crate::k8s::cluster_manager::{ClusterManager, config_entries_from_stored};
+use crate::k8s::cluster_manager::{
+    ClusterManager, config_entries_from_stored, default_config_name,
+};
 use crate::k8s::models::{ClusterConfig, ClusterSummary};
-use crate::kubeconfig::load_kubeconfig_from;
 use crate::logging::correlation_id;
 
-/// Returns the path to the managed kubeconfigs storage directory.
-fn managed_kubeconfigs_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let mut dir = app
+/// Returns the allowed base directories for kubeconfig files.
+fn allowed_kubeconfig_dirs(app: &AppHandle) -> Result<Vec<PathBuf>, String> {
+    let mut dirs = Vec::new();
+
+    // App config directory (always allowed)
+    let app_config_dir = app
         .path()
         .app_config_dir()
         .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
-    dir.push("managed_kubeconfigs");
-    fs::create_dir_all(&dir)
-        .map_err(|e| format!("Failed to create managed kubeconfigs directory: {e}"))?;
-    Ok(dir)
+    dirs.push(app_config_dir);
+
+    // User's .kube directory (standard location)
+    if let Some(home) = dirs::home_dir() {
+        dirs.push(home.join(".kube"));
+    }
+
+    Ok(dirs)
+}
+
+/// Normalizes a path for case-insensitive comparison on Windows.
+/// Returns the path as a lowercase string on Windows, or the display string on other platforms.
+fn normalize_for_comparison(path: &Path) -> String {
+    #[cfg(windows)]
+    {
+        path.to_string_lossy().to_lowercase()
+    }
+    #[cfg(not(windows))]
+    {
+        path.display().to_string()
+    }
+}
+
+/// Checks if a path is within one of the allowed base directories (case-insensitive on Windows).
+fn is_path_allowed_normalized(path: &Path, allowed_dirs: &[PathBuf]) -> bool {
+    let path_str = normalize_for_comparison(path);
+    allowed_dirs.iter().any(|base| {
+        let base_str = normalize_for_comparison(base);
+        path_str.starts_with(&base_str) || path_str == base_str
+    })
 }
 
 /// Lists all contexts from the active kubeconfig without connecting.
@@ -36,7 +65,7 @@ pub fn list_cluster_configs(
 }
 
 /// Connects to a context and verifies the API server is reachable. When
-/// \config_id\ is non-empty the client is built from that config, allowing
+/// `config_id` is non-empty the client is built from that config, allowing
 /// several clusters (across configs) to be connected at once.
 #[tauri::command]
 pub async fn connect_cluster(
@@ -48,6 +77,8 @@ pub async fn connect_cluster(
         .connect_for(config_id.as_deref().filter(|s| !s.is_empty()), &context)
         .await
 }
+
+/// Drops the cached client for a context, marking it disconnected.
 #[tauri::command]
 pub fn disconnect_cluster(
     context: String,
@@ -109,87 +140,54 @@ pub fn add_cluster_config(
     manager: State<'_, ClusterManager>,
 ) -> Result<Vec<ClusterConfig>, String> {
     let correlation_id = correlation_id();
-    info!(correlation_id = %correlation_id, "Adding cluster config from path: {path}");
+    info!(correlation_id = %correlation_id, "Adding cluster config");
 
-    // Validate the path exists and is a readable file
-    let pb = PathBuf::from(&path);
-    let metadata =
-        fs::metadata(&pb).map_err(|e| format!("Failed to access kubeconfig path: {e}"))?;
-    if !metadata.is_file() {
-        return Err(format!(
-            "Kubeconfig path is not a regular file: {}",
-            pb.display()
-        ));
-    }
-
-    // Validate that it's a valid kubeconfig by trying to parse it
-    let kubeconfig =
-        load_kubeconfig_from(&pb).map_err(|e| format!("Invalid kubeconfig file: {e}"))?;
-
-    // Create managed storage directory for kubeconfigs
-    let managed_dir = managed_kubeconfigs_dir(&app)?;
-
-    // Generate a UUID for this config
-    let id = Uuid::new_v4().to_string();
-
-    // Create the destination path: <managed_dir>/<uuid>.kubeconfig
-    let mut dest_path = managed_dir.clone();
-    dest_path.push(format!("{}.kubeconfig", id));
-
-    // Copy the file to managed storage
-    fs::copy(&pb, &dest_path)
-        .map_err(|e| format!("Failed to copy kubeconfig to managed storage: {e}"))?;
-
-    info!(correlation_id = %correlation_id, "Copied kubeconfig to managed storage: {}", dest_path.display());
-
-    let mut stored = crate::kubeconfig::load_cluster_configs(
-        &app.path()
-            .app_config_dir()
-            .map_err(|e| format!("Failed to resolve config dir: {e}"))?,
-    );
-
-    // Avoid duplicates by checking if we already have this exact managed file path
-    // (prevents adding the same managed file multiple times)
-    if stored.iter().any(|v| {
-        v.get("path").and_then(|p| p.as_str()) == Some(dest_path.to_string_lossy().as_ref())
-    }) {
-        info!(correlation_id = %correlation_id, "Managed kubeconfig already exists, skipping");
-        // Clean up the copied file since we're not using it
-        let _ = fs::remove_file(&dest_path);
-        return manager.list_configs();
-    }
-
-    // Derive a display name from the original filename (without extension)
-    let name = pb
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("kubeconfig")
-        .to_string();
-
-    // Get contexts from the kubeconfig for the config details
-    let contexts = crate::k8s::cluster_manager::contexts_for(&kubeconfig);
-
-    // Store the config with path pointing to the copied file in managed storage
-    stored.push(serde_json::json!({
-        "id": id,
-        "name": name,
-        "path": dest_path.to_string_lossy().as_ref(),
-        "contexts": contexts
-    }));
-
-    // Auto-activate this config when no config is active yet
     let dir = app
         .path()
         .app_config_dir()
         .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
+
+    // Validate the path is within allowed directories before persisting.
+    let allowed_dirs = allowed_kubeconfig_dirs(&app)?;
+    let pb = PathBuf::from(&path);
+    let canonical = std::fs::canonicalize(&pb)
+        .map_err(|e| format!("Failed to resolve kubeconfig path: {e}"))?;
+
+    if !is_path_allowed_normalized(&canonical, &allowed_dirs) {
+        warn!(correlation_id = %correlation_id, path = %canonical.display(), "Rejected kubeconfig path outside allowed directories");
+        return Err("Kubeconfig must be located under ~/.kube/ or the app config directory".into());
+    }
+
+    let metadata = std::fs::metadata(&canonical)
+        .map_err(|e| format!("Kubeconfig path is not accessible: {e}"))?;
+    if !metadata.is_file() {
+        return Err(format!(
+            "Kubeconfig path is not a regular file: {}",
+            canonical.display()
+        ));
+    }
+    let canonical_str = canonical.to_string_lossy().into_owned();
+
+    let mut stored = crate::kubeconfig::load_cluster_configs(&dir);
+    // Avoid duplicates by canonical path.
+    if stored
+        .iter()
+        .any(|v| v.get("path").and_then(|p| p.as_str()) == Some(canonical_str.as_str()))
+    {
+        info!(correlation_id = %correlation_id, "Kubeconfig already exists, skipping");
+        return manager.list_configs();
+    }
+    let id = Uuid::new_v4().to_string();
+    let name = default_config_name(&canonical_str);
+    stored.push(serde_json::json!({ "id": id, "name": name, "path": canonical_str }));
+    // Auto-activate this config when no config is active yet, so its clusters
+    // are immediately visible instead of showing an empty resource page.
     let mut active = crate::kubeconfig::load_active_config_id(&dir);
     if active.is_none() {
         active = Some(id.clone());
     }
-
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
     manager.set_configs(config_entries_from_stored(&stored), active)?;
-
     info!(correlation_id = %correlation_id, config_id = %id, name = %name, "Cluster config added successfully");
     manager.list_configs()
 }
@@ -234,35 +232,13 @@ pub fn remove_cluster_config(
         .app_config_dir()
         .map_err(|e| format!("Failed to resolve config dir: {e}"))?;
     let mut stored = crate::kubeconfig::load_cluster_configs(&dir);
-
-    // Find the config to get its path for cleanup
-    let config_to_remove = stored
-        .iter()
-        .find(|v| v.get("id").and_then(|i| i.as_str()) == Some(id.as_str()))
-        .cloned();
-
-    // Remove the config from the list
     stored.retain(|v| v.get("id").and_then(|i| i.as_str()) != Some(id.as_str()));
-
     let mut active = crate::kubeconfig::load_active_config_id(&dir);
     if active.as_deref() == Some(id.as_str()) {
         active = None;
     }
-
     crate::kubeconfig::save_cluster_configs(&dir, &stored, active.as_deref());
     manager.set_configs(config_entries_from_stored(&stored), active)?;
-
-    // If we found the config, remove the managed kubeconfig file
-    if let Some(config) = config_to_remove
-        && let Some(path) = config.get("path").and_then(|p| p.as_str())
-    {
-        let file_path = PathBuf::from(path);
-        if file_path.exists() {
-            let _ = fs::remove_file(&file_path);
-            info!(correlation_id = %correlation_id, "Removed managed kubeconfig file: {}", file_path.display());
-        }
-    }
-
     info!(correlation_id = %correlation_id, "Cluster config removed successfully");
     manager.list_configs()
 }
