@@ -1,6 +1,9 @@
 # Changelog
 
-## v0.3.20
+## v0.3.23
+
+- **Searchable namespace dropdown:** replaced non-searchable `Select` with searchable `NamespaceSelect` component using `Command` + `Popover` pattern, allowing filtering namespaces by name.
+- **Column sorting:** added `accessorKey` and `sortingValue` to all resource table columns (Pod ready/status/restarts/controlled-by/node/qos, Node status/roles/version, Namespace status, ConfigMap/Secret data count, PV/PVC status, Ingress address, Service type/cluster-ip, Job completions). Previously only Name, Namespace, and Age were sortable.
 
 - **CI clippy errors fixed:** replaced `unwrap_or_else(|| "kubeconfig")` with `unwrap_or("kubeconfig")`, collapsed nested `if let` statements, and added `#[allow(dead_code)]` to unused `default_config_name` function.
 
