@@ -19,6 +19,7 @@ export function AppHeader() {
     activeCluster?.configId,
   );
   const namespaces = namespacesQuery.data ?? [];
+  const namespacesLoading = namespacesQuery.isLoading;
   const connected = activeCluster?.connected ?? false;
   const isDark = resolvedTheme === "dark";
 
@@ -48,6 +49,7 @@ export function AppHeader() {
           value={activeNamespace}
           onChange={setActiveNamespace}
           namespaces={namespaces}
+          isLoading={namespacesLoading}
         />
 
         <Button
