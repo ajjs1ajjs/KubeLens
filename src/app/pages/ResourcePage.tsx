@@ -170,7 +170,7 @@ export function ResourcePage() {
               objects={objects}
               showNamespace={Boolean(meta?.namespaced) && activeNamespace === ""}
               metrics={metrics}
-              onSelect={() => {}}
+              onSelect={setSelected}
               actions={{
                 onViewYaml: setViewObject,
                 onEdit: setEditObject,

@@ -6,7 +6,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import type { ColumnDef, Row, SortingState } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useResourceColumns, type MetricsLookup } from "./columns";
@@ -39,13 +39,15 @@ export function ResourceTable({
 
   const columns = useMemo<ColumnDef<K8sObject>[]>(() => {
     const visible = config.filter((c) => c.id !== "namespace" || showNamespace);
-    const cols: ColumnDef<K8sObject>[] = visible.map((c) => ({
-      id: c.id,
-      header: c.header,
-      accessorKey: c.accessorKey,
-      enableSorting: Boolean(c.accessorKey) || Boolean(c.sortingValue),
-      sortingFn: c.sortingValue
-        ? (rowA, rowB, _columnId: string) => {
+    const cols: ColumnDef<K8sObject>[] = visible.map((c) => {
+      const hasCustomSort = Boolean(c.sortingValue);
+      return {
+        id: c.id,
+        header: c.header,
+        accessorKey: c.accessorKey,
+        enableSorting: hasCustomSort || Boolean(c.accessorKey),
+        ...(hasCustomSort && {
+          sortingFn: (rowA: Row<K8sObject>, rowB: Row<K8sObject>, _columnId: string) => {
             void _columnId;
             const av = c.sortingValue!(rowA.original);
             const bv = c.sortingValue!(rowB.original);
@@ -54,10 +56,11 @@ export function ResourceTable({
             if (bv == null) return -1;
             if (typeof av === "number" && typeof bv === "number") return av - bv;
             return String(av).localeCompare(String(bv));
-          }
-        : undefined,
-      cell: ({ row }) => c.cell(row.original),
-    }));
+          },
+        }),
+        cell: ({ row }) => c.cell(row.original),
+      };
+    });
 
     if (actions && Object.values(actions).some(Boolean)) {
       cols.push({

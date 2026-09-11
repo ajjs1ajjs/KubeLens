@@ -124,8 +124,10 @@ pub async fn list_namespaces(
     let mut names: Vec<String> = list
         .items
         .iter()
-        .filter_map(|o| o.data.pointer("/metadata/name").and_then(|v| v.as_str()))
-        .map(|s| s.to_string())
+        .filter_map(|o| {
+            let val = serde_json::to_value(o).ok()?;
+            val.pointer("/metadata/name")?.as_str().map(String::from)
+        })
         .collect();
     names.sort();
     Ok(names)
