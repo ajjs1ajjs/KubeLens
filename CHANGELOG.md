@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.18
+
+- **Build errors fixed:** resolved unresolved `Kubeconfig` import, removed invalid `?` operator usage on `save_cluster_configs` (which returns `()`), and cleaned up unused imports in `clusters.rs`.
+
 ## v0.3.0
 
 - **Lens-style Pod table:** new columns Restarts, Controlled By, Node, QoS alongside the existing Name, Namespace, Ready, Status, CPU, Memory, Age. QoS is color-coded (Guaranteed/Burstable/BestEffort).

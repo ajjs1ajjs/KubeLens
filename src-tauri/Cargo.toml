@@ -1,6 +1,6 @@
 [package]
 name = "kubelens"
-version = "0.3.17"
+version = "0.3.18"
 description = "A modern, lightweight Kubernetes IDE"
 authors = ["KubeLens"]
 edition = "2024"
@@ -40,3 +40,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
+
