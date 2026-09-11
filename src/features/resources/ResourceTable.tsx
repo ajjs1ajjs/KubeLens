@@ -45,7 +45,8 @@ export function ResourceTable({
       accessorKey: c.accessorKey,
       enableSorting: Boolean(c.accessorKey) || Boolean(c.sortingValue),
       sortingFn: c.sortingValue
-        ? (rowA, rowB) => {
+        ? (rowA, rowB, _columnId: string) => {
+            void _columnId;
             const av = c.sortingValue!(rowA.original);
             const bv = c.sortingValue!(rowB.original);
             if (av == null && bv == null) return 0;

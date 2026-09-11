@@ -333,6 +333,8 @@
     "connected": "connected",
     "offline": "offline",
     "allNamespaces": "All namespaces",
-    "toggleTheme": "Toggle theme"
+    "toggleTheme": "Toggle theme",
+    "loadingNamespaces": "Loading namespaces…",
+    "noNamespacesFound": "No namespaces found"
   }
 }

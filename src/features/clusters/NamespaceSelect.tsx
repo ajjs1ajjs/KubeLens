@@ -66,7 +66,7 @@ export function NamespaceSelect({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-44 p-0" align="start">
+      <PopoverContent className="w-64 p-0" align="start">
         <Command>
           <CommandInput
             placeholder={placeholderText}
@@ -74,11 +74,11 @@ export function NamespaceSelect({
           />
           <CommandList>
             <CommandEmpty>
-              {isLoading ? t("header.loadingNamespaces") : "No namespace found."}
+              {isLoading ? t("header.loadingNamespaces") : t("header.noNamespacesFound")}
             </CommandEmpty>
             <CommandGroup>
               <CommandItem value="" className="cursor-pointer" onSelect={() => handleSelect("")}>
-                <span className="truncate">{allText}</span>
+                {allText}
               </CommandItem>
               {namespaces.map((namespace) => (
                 <CommandItem
@@ -87,7 +87,7 @@ export function NamespaceSelect({
                   className="cursor-pointer"
                   onSelect={() => handleSelect(namespace)}
                 >
-                  <span className="truncate">{namespace}</span>
+                  {namespace}
                 </CommandItem>
               ))}
             </CommandGroup>
