@@ -41,6 +41,11 @@ export function NamespaceSelect({
     return value;
   }, [value, placeholderText]);
 
+  const handleSelect = (selectedValue: string) => {
+    onChange(selectedValue);
+    setOpen(false);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -64,24 +69,15 @@ export function NamespaceSelect({
           <CommandList>
             <CommandEmpty>No namespace found.</CommandEmpty>
             <CommandGroup>
-              <CommandItem
-                className="cursor-pointer"
-                onSelect={() => {
-                  onChange("");
-                  setOpen(false);
-                }}
-              >
+              <CommandItem value="" className="cursor-pointer" onSelect={() => handleSelect("")}>
                 <span className="truncate">{allText}</span>
               </CommandItem>
               {namespaces.map((namespace) => (
                 <CommandItem
                   key={namespace}
                   value={namespace}
-                  className="cursor-pointer justify-between"
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue);
-                    setOpen(false);
-                  }}
+                  className="cursor-pointer"
+                  onSelect={() => handleSelect(namespace)}
                 >
                   <span className="truncate">{namespace}</span>
                 </CommandItem>
