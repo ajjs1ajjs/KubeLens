@@ -3,8 +3,10 @@ name: Deferred Release (Oct 1)
 # ONE-SHOT scheduler. GitHub Actions minutes renew on Oct 1, so this workflow
 # fires once the quota is back and hands off to "Auto Release" via the API.
 # A push made with GITHUB_TOKEN never triggers other workflows, therefore we
-# dispatch instead of pushing. After the Oct 1 run succeeds, DELETE THIS FILE
-# (otherwise it will fire again every Oct 1).
+# dispatch instead of pushing. After the release run finishes successfully,
+# this workflow deletes itself (the cleanup commit carries [skip ci], so the
+# push costs no minutes and triggers nothing). If the release fails, the file
+# stays in place for a manual retry. Manual dispatches never delete this file.
 on:
   schedule:
     - cron: "5 0 1 10 *"
@@ -12,7 +14,7 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 jobs:
   trigger:
@@ -20,6 +22,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch Auto Release on main
+        id: dispatch
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        run: gh workflow run "Auto Release" --ref main
+        run: |
+          set -euo pipefail
+          gh workflow run "Auto Release" --ref main
+          RUN_ID=""
+          for i in $(seq 1 30); do
+            RUN_ID=$(gh run list --workflow "Auto Release" --branch main --event workflow_dispatch --limit 5 --json databaseId,createdAt --jq 'sort_by(.createdAt) | reverse | .[0].databaseId')
+            if [ -n "$RUN_ID" ]; then break; fi
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::Could not find the dispatched Auto Release run"
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Auto Release to finish
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: gh run watch ${{ steps.dispatch.outputs.run_id }} --exit-status
+
+      - uses: actions/checkout@v7
+        if: github.event_name == 'schedule'
+        with:
+          ref: main
+
+      - name: Remove one-shot scheduler
+        if: github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B main
+          git fetch origin main
+          git rebase origin/main
+          git rm .github/workflows/deferred-release.yml
+          git commit -m "ci: remove one-shot deferred release [skip ci]"
+          git push origin HEAD:main
