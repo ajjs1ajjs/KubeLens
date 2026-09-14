@@ -1,8 +1,8 @@
 name: Auto Release
 
 # Bumps the patch version on every push to main, then builds and publishes
-# installers for all three platforms — all inside this single workflow run
-# using the default GITHUB_TOKEN. No PAT (RELEASE_TOKEN) is required: the
+# installers for all supported platforms — all inside this single workflow run
+# using GITHUB_TOKEN (or PUBLIC_RELEASE_TOKEN when set, so the published release stays visible to other flows). No extra PAT setup is required otherwise: the
 # builds run as jobs of this same run instead of relying on the tag push to
 # trigger release.yml, because events created with GITHUB_TOKEN never trigger
 # other workflows.
@@ -59,6 +59,11 @@ jobs:
             c.version = newVer;
             fs.writeFileSync(f, JSON.stringify(c, null, 2) + '\n');
           }
+          // Info.plist: CFBundleVersion + CFBundleShortVersionString
+          let plist = fs.readFileSync('src-tauri/Info.plist', 'utf8');
+          plist = plist.replace(/(<key>CFBundleVersion<\/key>\s*<string>)[^<]*(<\/string>)/, '$1' + newVer + '$2');
+          plist = plist.replace(/(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]*(<\/string>)/, '$1' + newVer + '$2');
+          fs.writeFileSync('src-tauri/Info.plist', plist);
           // Cargo.toml: replace first ^version = "..." (package version)
           let cargo = fs.readFileSync('src-tauri/Cargo.toml', 'utf8');
           let count = 0;
@@ -75,8 +80,9 @@ jobs:
           const pkg = JSON.parse(fs.readFileSync('package.json','utf8')).version;
           const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')).version;
           const cargoVer = fs.readFileSync('src-tauri/Cargo.toml','utf8').match(/^version\s*=\s*"([^"]+)"/m)[1];
-          if (pkg !== newVer || tauri !== newVer || cargoVer !== newVer) {
-            console.error('Version mismatch after bump: pkg=' + pkg + ' tauri=' + tauri + ' cargo=' + cargoVer + ' expected=' + newVer);
+          const plistVer = fs.readFileSync('src-tauri/Info.plist','utf8').match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)[1];
+          if (pkg !== newVer || tauri !== newVer || cargoVer !== newVer || plistVer !== newVer) {
+            console.error('Version mismatch after bump: pkg=' + pkg + ' tauri=' + tauri + ' cargo=' + cargoVer + ' plist=' + plistVer + ' expected=' + newVer);
             process.exit(1);
           }
           console.log('Verified versions in sync: ' + newVer);
@@ -84,7 +90,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src-tauri/Cargo.toml src-tauri/tauri.conf.json package.json
+          git add src-tauri/Cargo.toml src-tauri/tauri.conf.json package.json src-tauri/Info.plist
           git commit -m "chore: release $TAG"
           git tag "$TAG"
           git push origin HEAD:main
@@ -108,8 +114,9 @@ jobs:
             args: --bundles deb,appimage --config src-tauri/updater-ci.conf.json
           - name: macOS (Apple Silicon)
             platform: macos-latest
-            # "app" produces the .app.tar.gz updater artifact the in-app updater
-            # downloads; "dmg" is only the user-facing installer.
+            args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
+          - name: macOS (Intel)
+            platform: macos-15-intel
             args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
     runs-on: ${{ matrix.platform }}
     steps:
@@ -142,12 +149,14 @@ jobs:
           PKG=$(node -p "require('./package.json').version")
           TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
           CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)"/\1/')
+          PLIST=$(node -p "require('fs').readFileSync('src-tauri/Info.plist','utf8').match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)[1]")
           echo "Tag: $TAG  expected version: $VER"
           echo "package.json: $PKG"
           echo "tauri.conf.json: $TAURI"
           echo "Cargo.toml: $CARGO"
-          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" ]]; then
-            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO"
+          echo "Info.plist: $PLIST"
+          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" || "$PLIST" != "$VER" ]]; then
+            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO plist=$PLIST"
             exit 1
           fi
           echo "Version check passed: $VER"
@@ -189,11 +198,22 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
 
-      - name: Upload macOS artifacts
+      - name: Upload macOS Apple Silicon artifacts
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: bundle-macos
+          name: bundle-macos-arm64
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+
+      - name: Upload macOS Intel artifacts
+        if: matrix.platform == 'macos-15-intel'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-macos-x64
           if-no-files-found: error
           path: |
             src-tauri/target/release/bundle/dmg/*.dmg
@@ -249,14 +269,16 @@ jobs:
 
           const win = pick('Windows NSIS installer', /x64-setup\.exe$/i);
           const linux = pick('Linux AppImage', /amd64\.AppImage$/i);
-          const macos = pick('macOS updater bundle', /app\.tar\.gz$/i);
+          const macosArm = pick('macOS Apple Silicon updater bundle', /aarch64.*app\.tar\.gz$/i);
+          const macosIntel = pick('macOS Intel updater bundle', /x86_64.*app\.tar\.gz$/i);
 
           const latest = {
             version,
             platforms: {
               'windows-x86_64': { signature: sigOf(win), url: url(win) },
               'linux-x86_64': { signature: sigOf(linux), url: url(linux) },
-              'darwin-aarch64': { signature: sigOf(macos), url: url(macos) },
+              'darwin-aarch64': { signature: sigOf(macosArm), url: url(macosArm) },
+              'darwin-x86_64': { signature: sigOf(macosIntel), url: url(macosIntel) },
             },
           };
           fs.writeFileSync('latest.json', JSON.stringify(latest, null, 2) + '\n');
@@ -269,7 +291,7 @@ jobs:
           tag_name: ${{ needs.bump.outputs.tag }}
           name: KubeLens ${{ needs.bump.outputs.tag }}
           body: |
-            Installers: Windows (NSIS), Ubuntu (deb + AppImage), macOS Apple Silicon (dmg).
+            Installers: Windows (NSIS), Ubuntu (deb + AppImage), macOS Apple Silicon (dmg), macOS Intel (dmg).
 
             The app checks for updates on startup and installs them in place — no manual download needed.
           draft: false
@@ -279,4 +301,4 @@ jobs:
             release-files/*
             latest.json
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}

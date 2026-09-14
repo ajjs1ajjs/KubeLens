@@ -1,0 +1,25 @@
+name: Deferred Release (Oct 1)
+
+# ONE-SHOT scheduler. GitHub Actions minutes renew on Oct 1, so this workflow
+# fires once the quota is back and hands off to "Auto Release" via the API.
+# A push made with GITHUB_TOKEN never triggers other workflows, therefore we
+# dispatch instead of pushing. After the Oct 1 run succeeds, DELETE THIS FILE
+# (otherwise it will fire again every Oct 1).
+on:
+  schedule:
+    - cron: "5 0 1 10 *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger:
+    name: Trigger Auto Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Auto Release on main
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: gh workflow run "Auto Release" --ref main

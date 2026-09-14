@@ -32,14 +32,27 @@ Set-VersionLine (Join-Path $root "src-tauri\tauri.conf.json") '^(\s*"version"\s*
 # --- package.json: "version": "0.1.0" ---
 Set-VersionLine (Join-Path $root "package.json") '^(\s*"version"\s*:\s*)"[^"]*"(\s*,?\s*)$'
 
+# --- Info.plist: CFBundleVersion + CFBundleShortVersionString ---
+$plistPath = Join-Path $root "src-tauri\Info.plist"
+$plistBefore = Get-Content $plistPath -Raw
+$plist = [regex]::Replace($plistBefore, '(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)', '${1}' + $Version + '${2}')
+$plist = [regex]::Replace($plist, '(<key>CFBundleShortVersionString</key>\s*<string>)[^<]*(</string>)', '${1}' + $Version + '${2}')
+if ($plist -eq $plistBefore) { throw "Failed to bump version in $plistPath - patterns did not match." }
+Set-Content -Path $plistPath -Value $plist -NoNewline
+
 # --- verify all three manifests are in sync ---
 $pkgVer = (Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json).version
 $tauriVer = (Get-Content (Join-Path $root "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json).version
 $cargoRaw = Get-Content (Join-Path $root "src-tauri\Cargo.toml") -Raw
 if ($cargoRaw -notmatch '(?m)^version\s*=\s*"([^"]+)"') { throw "Could not parse Cargo.toml version" }
 $cargoVer = $Matches[1]
-foreach ($v in @($pkgVer, $tauriVer, $cargoVer)) {
-    if ($v -ne $Version) { throw "Version mismatch after bump: expected $Version but got pkg=$pkgVer tauri=$tauriVer cargo=$cargoVer" }
+$plistRaw = Get-Content (Join-Path $root "src-tauri\Info.plist") -Raw
+if ($plistRaw -notmatch '<key>CFBundleShortVersionString</key>\s*<string>([^<]+)</string>') { throw "Could not parse Info.plist short version" }
+$plistVer = $Matches[1]
+if ($plistRaw -notmatch '<key>CFBundleVersion</key>\s*<string>([^<]+)</string>') { throw "Could not parse Info.plist build version" }
+$plistBuild = $Matches[1]
+foreach ($v in @($pkgVer, $tauriVer, $cargoVer, $plistVer, $plistBuild)) {
+    if ($v -ne $Version) { throw "Version mismatch after bump: expected $Version but got pkg=$pkgVer tauri=$tauriVer cargo=$cargoVer plist=$plistVer build=$plistBuild" }
 }
 Write-Host "Verified versions in sync: $Version"
 
@@ -48,7 +61,7 @@ $tag = "v$Version"
 # Stage only the three manifest files explicitly — never `git add -A`, which
 # can sweep up untracked secrets (e.g. Tauri signing keys in privkey.txt) that
 # are not yet covered by .gitignore.
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src-tauri/Info.plist
 git commit -m "chore: release $tag"
 git tag $tag
 

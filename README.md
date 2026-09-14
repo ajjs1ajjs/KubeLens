@@ -21,7 +21,7 @@ Explore workloads, logs, metrics, Helm releases and dependency topology from one
 [![CI](https://img.shields.io/github/actions/workflow/status/ajjs1ajjs/KubeLens/ci.yml?branch=main&label=CI&logo=github)](https://github.com/ajjs1ajjs/KubeLens/actions)
 [![Release](https://img.shields.io/github/v/release/ajjs1ajjs/KubeLens?label=latest%20release&logo=semver)](https://github.com/ajjs1ajjs/KubeLens/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111827)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows)](https://www.microsoft.com/windows/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-0078D4)](https://github.com/ajjs1ajjs/KubeLens/releases)
 [![React](https://img.shields.io/badge/React-19-20232a?logo=react)](https://react.dev/)
 [![Tauri](https://img.shields.io/badge/Tauri-2-24c8db?logo=tauri)](https://tauri.app/)
 
@@ -68,6 +68,88 @@ KubeLens is a modern Kubernetes IDE for developers and platform engineers who wa
 - Visual Studio Build Tools with the **Desktop development with C++** workload on Windows
 
 The repository pins the Rust toolchain in [`src-tauri/rust-toolchain.toml`](src-tauri/rust-toolchain.toml).
+
+---
+
+### Windows
+
+#### System requirements
+
+- Windows 10 or later (64-bit)
+- Node.js 22+ ([download](https://nodejs.org/))
+- Visual Studio Build Tools with the **Desktop development with C++** workload
+  - Install via: `winget install Microsoft.VisualStudio.2022.BuildTools`
+  - Or download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+- Rust stable with MSVC toolchain (installed automatically by rustup)
+
+#### Install
+
+```powershell
+# 1. Install Node.js 22+ from https://nodejs.org/
+
+# 2. Install Visual Studio Build Tools with C++ workload
+winget install Microsoft.VisualStudio.2022.BuildTools
+
+# 3. Clone and install dependencies
+git clone https://github.com/ajjs1ajjs/KubeLens.git
+cd KubeLens
+npm install
+```
+
+#### Run
+
+```powershell
+npm run tauri dev
+```
+
+#### Verify
+
+```powershell
+npm run tauri dev
+# App window should open; check Help > About for version and "windows" platform
+```
+
+---
+
+### macOS Apple Silicon
+
+#### System requirements
+
+- macOS 11.0 (Big Sur) or later
+- Apple Silicon: M1, M2, M3, M4 or newer (ARM64 / aarch64)
+- Xcode Command Line Tools
+- Node.js 22+ ([download](https://nodejs.org/))
+
+#### Install
+
+```bash
+# 1. Install Xcode Command Line Tools
+xcode-select --install
+
+# 2. Install Node.js 22+ from https://nodejs.org/ or via Homebrew
+brew install node@22
+
+# 3. Clone and install dependencies
+git clone https://github.com/ajjs1ajjs/KubeLens.git
+cd KubeLens
+npm install
+```
+
+#### Run
+
+```bash
+npm run tauri dev
+```
+
+#### Verify
+
+```bash
+npm run tauri dev
+# App window should open; check Help > About for version and "macos" platform
+# Runs natively on ARM64 — no Rosetta 2 required
+```
+
+---
 
 ### Run locally
 

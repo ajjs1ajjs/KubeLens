@@ -21,12 +21,15 @@ pub fn app_info() -> AppInfo {
 
     let platform = std::env::consts::OS;
     let platform_windows = platform == "windows";
+    let platform_macos = platform == "macos";
 
     AppInfo {
         name: env!("CARGO_PKG_NAME"),
         version: env!("CARGO_PKG_VERSION"),
         platform: if platform_windows {
             "windows"
+        } else if platform_macos {
+            "macos"
         } else {
             "unsupported"
         },

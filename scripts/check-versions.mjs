@@ -9,11 +9,20 @@ if (!m) {
   process.exit(1);
 }
 const cargo = m[1];
+const plistRaw = readFileSync("src-tauri/Info.plist", "utf8");
+const shortVer = plistRaw.match(
+  /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/,
+);
+const buildVer = plistRaw.match(/<key>CFBundleVersion<\/key>\s*<string>([^<]+)<\/string>/);
+if (!shortVer || !buildVer) {
+  console.error("Could not parse src-tauri/Info.plist versions");
+  process.exit(1);
+}
 
-console.log(`pkg=${pkg} tauri=${tauri} cargo=${cargo}`);
-if (pkg !== tauri || pkg !== cargo) {
+console.log(`pkg=${pkg} tauri=${tauri} cargo=${cargo} plist=${shortVer[1]} (build ${buildVer[1]})`);
+if (pkg !== tauri || pkg !== cargo || pkg !== shortVer[1] || pkg !== buildVer[1]) {
   console.error(
-    `Version mismatch: pkg=${pkg} tauri=${tauri} cargo=${cargo} — run ./scripts/bump-version.ps1 <version> to sync`,
+    `Version mismatch: pkg=${pkg} tauri=${tauri} cargo=${cargo} plist=${shortVer[1]} build=${buildVer[1]} — run ./scripts/bump-version.ps1 <version> to sync`,
   );
   process.exit(1);
 }

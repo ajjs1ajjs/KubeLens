@@ -29,8 +29,9 @@ jobs:
             args: --bundles deb,appimage --config src-tauri/updater-ci.conf.json
           - name: macOS (Apple Silicon)
             platform: macos-latest
-            # "app" produces the .app.tar.gz updater artifact the in-app updater
-            # downloads; "dmg" is only the user-facing installer.
+            args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
+          - name: macOS (Intel)
+            platform: macos-15-intel
             args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
     runs-on: ${{ matrix.platform }}
     steps:
@@ -61,17 +62,19 @@ jobs:
           PKG=$(node -p "require('./package.json').version")
           TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
           CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)"/\1/')
+          PLIST=$(node -p "require('fs').readFileSync('src-tauri/Info.plist','utf8').match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)[1]")
           echo "Tag: $TAG  expected version: $VER"
           echo "package.json: $PKG"
           echo "tauri.conf.json: $TAURI"
           echo "Cargo.toml: $CARGO"
-          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" ]]; then
-            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO"
-            echo "Fix with: ./scripts/bump-version.ps1 $VER  (or ensure all three files match the tag)"
+          echo "Info.plist: $PLIST"
+          if [[ "$PKG" != "$VER" || "$TAURI" != "$VER" || "$CARGO" != "$VER" || "$PLIST" != "$VER" ]]; then
+            echo "::error::Version mismatch: tag $TAG expects $VER but got pkg=$PKG tauri=$TAURI cargo=$CARGO plist=$PLIST"
+            echo "Fix with: ./scripts/bump-version.ps1 $VER  (or ensure all manifests match the tag)"
             exit 1
           fi
-          if [[ "$PKG" != "$TAURI" || "$PKG" != "$CARGO" ]]; then
-            echo "::error::Manifest versions out of sync: pkg=$PKG tauri=$TAURI cargo=$CARGO"
+          if [[ "$PKG" != "$TAURI" || "$PKG" != "$CARGO" || "$PKG" != "$PLIST" ]]; then
+            echo "::error::Manifest versions out of sync: pkg=$PKG tauri=$TAURI cargo=$CARGO plist=$PLIST"
             exit 1
           fi
           echo "Version check passed: $VER"
@@ -113,11 +116,22 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
 
-      - name: Upload macOS artifacts
+      - name: Upload macOS Apple Silicon artifacts
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: bundle-macos
+          name: bundle-macos-arm64
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+
+      - name: Upload macOS Intel artifacts
+        if: matrix.platform == 'macos-15-intel'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-macos-x64
           if-no-files-found: error
           path: |
             src-tauri/target/release/bundle/dmg/*.dmg
@@ -172,14 +186,16 @@ jobs:
 
           const win = pick('Windows NSIS installer', /x64-setup\.exe$/i);
           const linux = pick('Linux AppImage', /amd64\.AppImage$/i);
-          const macos = pick('macOS updater bundle', /app\.tar\.gz$/i);
+          const macosArm = pick('macOS Apple Silicon updater bundle', /aarch64.*app\.tar\.gz$/i);
+          const macosIntel = pick('macOS Intel updater bundle', /x86_64.*app\.tar\.gz$/i);
 
           const latest = {
             version,
             platforms: {
               'windows-x86_64': { signature: sigOf(win), url: url(win) },
               'linux-x86_64': { signature: sigOf(linux), url: url(linux) },
-              'darwin-aarch64': { signature: sigOf(macos), url: url(macos) },
+              'darwin-aarch64': { signature: sigOf(macosArm), url: url(macosArm) },
+              'darwin-x86_64': { signature: sigOf(macosIntel), url: url(macosIntel) },
             },
           };
           fs.writeFileSync('latest.json', JSON.stringify(latest, null, 2) + '\n');
@@ -192,7 +208,7 @@ jobs:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           name: KubeLens ${{ inputs.release_tag || github.ref_name }}
           body: |
-            Installers: Windows (NSIS), Ubuntu (deb + AppImage), macOS Apple Silicon (dmg).
+            Installers: Windows (NSIS), Ubuntu (deb + AppImage), macOS Apple Silicon (dmg), macOS Intel (dmg).
 
             The app checks for updates on startup and installs them in place — no manual download needed.
           draft: false
