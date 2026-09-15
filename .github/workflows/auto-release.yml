@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: auto-release
@@ -23,11 +23,14 @@ jobs:
     name: Bump version and tag
     if: "github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'chore: release')"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
     outputs:
       tag: ${{ steps.bump.outputs.tag }}
       skipped: ${{ steps.bump.outputs.skipped }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -88,9 +91,29 @@ jobs:
           console.log('Verified versions in sync: ' + newVer);
           NODEEOF
 
+          # Sync the lockfiles to the bumped version (otherwise the tag
+          # commit ships a stale package-lock.json / Cargo.lock root).
+          # npm needs no network for a version-only refresh; Cargo.lock's
+          # kubelens stanza is patched directly (no toolchain on this job).
+          npm install --package-lock-only
+          node <<'NODEEOF'
+          const fs = require('fs');
+          const newVer = process.env.NEW;
+          const lockPath = 'src-tauri/Cargo.lock';
+          let lock = fs.readFileSync(lockPath, 'utf8');
+          const re = /(\[\[package\]\]\nname = "kubelens"\nversion = ")[^"]*(")/;
+          if (!re.test(lock)) {
+            console.error('kubelens stanza not found in Cargo.lock');
+            process.exit(1);
+          }
+          lock = lock.replace(re, '$1' + newVer + '$2');
+          fs.writeFileSync(lockPath, lock);
+          console.log('Cargo.lock root version synced: ' + newVer);
+          NODEEOF
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src-tauri/Cargo.toml src-tauri/tauri.conf.json package.json src-tauri/Info.plist
+          git add src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json package.json package-lock.json src-tauri/Info.plist
           git commit -m "chore: release $TAG"
           git tag "$TAG"
           git push origin HEAD:main
@@ -107,35 +130,37 @@ jobs:
       matrix:
         include:
           - name: Windows (x64)
-            platform: windows-latest
+            platform: windows-2025
             args: --bundles nsis --config src-tauri/updater-ci.conf.json
           - name: Ubuntu (x64)
             platform: ubuntu-22.04
             args: --bundles deb,appimage --config src-tauri/updater-ci.conf.json
           - name: macOS (Apple Silicon)
-            platform: macos-latest
+            platform: macos-15
             args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
           - name: macOS (Intel)
             platform: macos-15-intel
             args: --bundles app,dmg --config src-tauri/updater-ci.conf.json
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ needs.bump.outputs.tag }}
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo rm -rf /var/lib/apt/lists/*
 
       - name: Install dependencies
         run: npm ci
@@ -178,8 +203,8 @@ jobs:
         run: npm run tauri build -- ${{ matrix.args }}
 
       - name: Upload Windows artifacts
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
+        if: matrix.platform == 'windows-2025'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bundle-windows
           if-no-files-found: error
@@ -189,7 +214,7 @@ jobs:
 
       - name: Upload Linux artifacts
         if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bundle-linux
           if-no-files-found: error
@@ -199,8 +224,8 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
 
       - name: Upload macOS Apple Silicon artifacts
-        if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
+        if: matrix.platform == 'macos-15'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bundle-macos-arm64
           if-no-files-found: error
@@ -211,7 +236,7 @@ jobs:
 
       - name: Upload macOS Intel artifacts
         if: matrix.platform == 'macos-15-intel'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bundle-macos-x64
           if-no-files-found: error
@@ -224,10 +249,15 @@ jobs:
     name: Publish release
     needs: [bump, build]
     if: needs.bump.outputs.skipped != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+    environment: production
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: bundle-*
           merge-multiple: true
@@ -285,8 +315,13 @@ jobs:
           console.log(fs.readFileSync('latest.json', 'utf8'));
           NODEEOF
 
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: "release-files/*"
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.bump.outputs.tag }}
           name: KubeLens ${{ needs.bump.outputs.tag }}

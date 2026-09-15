@@ -72,29 +72,30 @@ Vite configuration in `vite.config.ts`:
 
 ### Version Bumping
 
-1. Update version in three files (must match):
-   - `package.json`
+1. Update version in four files + two lockfiles (must match):
+   - `package.json` (+ `package-lock.json`, refreshed via `npm install --package-lock-only`)
    - `src-tauri/tauri.conf.json`
-   - `src-tauri/Cargo.toml`
+   - `src-tauri/Cargo.toml` (+ `src-tauri/Cargo.lock` root stanza)
+   - `src-tauri/Info.plist`
 
    Use the provided script:
 
    ```powershell
    # Windows PowerShell
-   .\scripts\bump-version.ps1 0.3.11
+   .\scripts\bump-version.ps1 0.3.29
    ```
 
 2. Commit changes:
 
    ```bash
-   git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
-   git commit -m "chore: bump version to 0.3.11"
+   git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/Info.plist
+   git commit -m "chore: bump version to 0.3.29"
    ```
 
 3. Create and push tag:
    ```bash
-   git tag v0.3.11
-   git push origin v0.3.11
+   git tag v0.3.29
+   git push origin v0.3.29
    ```
 
 ### GitHub Actions Release Workflow
@@ -108,9 +109,16 @@ The release is automated via `.github/workflows/release.yml`:
 
 Required GitHub Secrets:
 
-- `TAURI_SIGNING_PRIVATE_KEY`: Minisign private key for artifact signing
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: Password for the key (if encrypted)
-- `PUBLIC_RELEASE_TOKEN` (optional): GitHub token for release creation
+- `TAURI_SIGNING_PRIVATE_KEY`: Minisign private key for artifact signing (rotated 2026-09-15; old docs-example key revoked)
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: Password for the key (encrypted, always set)
+- `PUBLIC_RELEASE_TOKEN` (optional): classic PAT with `repo` scope owned by ajjs1ajjs, used instead of `GITHUB_TOKEN` so the published release stays visible to other flows (tag pushes made with `GITHUB_TOKEN` do not trigger `release.yml`). If unset, falls back to `GITHUB_TOKEN`.
+
+### Key rotation
+
+1. `npx tauri signer generate -w kubelens.key -f -p <new-password> --ci`
+2. Copy the `*.key.pub` contents into `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`
+3. `gh secret set TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (paste, never commit)
+4. Delete the local key files. Old artifacts stay uninstallable only — the updater rejects anything not signed with the new key.
 
 ### Generating Minisign Keys
 

@@ -49,13 +49,16 @@ export function readPath(obj: K8sObject, path: string): unknown {
   return path
     .split("/")
     .filter(Boolean)
-    .reduce<unknown>(
-      (current, segment) =>
-        current && typeof current === "object"
-          ? (current as Record<string, unknown>)[segment]
-          : undefined,
-      obj,
-    );
+    .reduce<unknown>((current, segment) => {
+      // Prototype pollution guard: label/annotation keys come from the
+      // cluster and must never reach the prototype chain.
+      if (segment === "__proto__" || segment === "constructor" || segment === "prototype") {
+        return undefined;
+      }
+      return current && typeof current === "object"
+        ? (current as Record<string, unknown>)[segment]
+        : undefined;
+    }, obj);
 }
 
 /** Returns the ready/available replica summary, e.g. `2/3`. */

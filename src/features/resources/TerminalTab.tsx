@@ -31,6 +31,10 @@ export function TerminalTab({ ctx, name, containers, selectedContainer }: Termin
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex shrink-0 items-center gap-2">
+        <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+          {name}
+          {container ? ` / ${container}` : ""} · {t("resources.terminal.untrusted")}
+        </span>
         {containers.length > 1 && (
           <Select value={container} onValueChange={setContainer}>
             <SelectTrigger size="sm" className="w-44">

@@ -28,6 +28,7 @@ export function TerminalView({ session }: TerminalViewProps) {
       cursorBlink: true,
       convertEol: true,
       fontSize: 12,
+      scrollback: 5000,
       theme: {
         background: "#09090b",
         foreground: "#e4e4e7",
@@ -44,6 +45,14 @@ export function TerminalView({ session }: TerminalViewProps) {
     writtenRef.current = 0;
 
     const dataDisposable = terminal.onData((data) => {
+      // Pasted multi-line input would execute immediately in the pod:
+      // require an explicit confirm above a small threshold.
+      if (data.includes("\n") && data.length > 32) {
+        const ok = window.confirm(
+          `Вставити ${data.length} символів з новими рядками у віддалений термінал? Вони виконаються одразу.`,
+        );
+        if (!ok) return;
+      }
       writeRef.current(data);
     });
     const resizeObserver = new ResizeObserver(() => {

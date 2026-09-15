@@ -27,7 +27,9 @@ export function PortForwardDialog({ open, onOpenChange, ctx, name }: PortForward
   const [remotePort, setRemotePort] = useState("8080");
   const { forwards, isPending, start, stop } = usePortForwards(ctx);
 
-  const podForwards = forwards.filter((f) => f.name === name);
+  const podForwards = forwards.filter(
+    (f) => f.name === name && (!f.namespace || f.namespace === ctx.namespace),
+  );
 
   const handleStart = () => {
     const port = Number(remotePort);

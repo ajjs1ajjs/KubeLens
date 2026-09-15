@@ -61,6 +61,8 @@ export interface ExecEvent {
 export interface PortForwardInfo {
   id: string;
   context: string;
+  /** Namespace disambiguates same pod names (absent in older backends). */
+  namespace?: string;
   name: string;
   remotePort: number;
   localPort: number;

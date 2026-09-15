@@ -18,13 +18,13 @@ use crate::k8s::resources;
 pub const WATCH_EVENT: &str = "kubelens://watch";
 
 pub struct WatchManager {
-    tasks: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+    tasks: std::sync::Arc<Mutex<HashMap<String, tokio::task::AbortHandle>>>,
 }
 
 impl Default for WatchManager {
     fn default() -> Self {
         Self {
-            tasks: Mutex::new(HashMap::new()),
+            tasks: std::sync::Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -46,11 +46,16 @@ impl WatchManager {
 
         let emit_app = app.clone();
         let task_id = id.clone();
+        let tasks_map = self.tasks.clone();
+        let cleanup_id = id.clone();
         let task = tokio::spawn(async move {
             stream_watch(api, ctx, task_id, move |event| {
                 let _ = emit_app.emit(WATCH_EVENT, event);
             })
             .await;
+            // A finished watch (server closed the stream) must not leak
+            // its map entry; explicit stop() also still works.
+            tasks_map.lock().unwrap().remove(&cleanup_id);
         });
         let abort_handle = task.abort_handle();
 

@@ -5,6 +5,10 @@
     "save": "Save",
     "apply": "Apply",
     "close": "Close",
+    "show": "Show",
+    "hide": "Hide",
+    "copy": "Copy",
+    "secretHidden": "Secret payloads are base64-encoded and trivially decodable. Revealed values stay on screen — beware screenshots and shoulder surfing.",
     "retry": "Retry",
     "delete": "Delete",
     "edit": "Edit",
@@ -167,6 +171,7 @@
       "description": "Apply changes to update this resource in the cluster.",
       "createDescription": "Apply a new {{label}} manifest.",
       "reset": "Reset",
+      "tooLarge": "Manifest exceeds 1 MB.",
       "applied": "Manifest applied"
     },
     "detail": {
@@ -234,7 +239,8 @@
       "container": "Container",
       "restart": "Restart terminal session",
       "connecting": "Connecting…",
-      "notStarted": "Terminal not started."
+      "notStarted": "Terminal not started.",
+      "untrusted": "remote output is untrusted — never paste secrets"
     },
     "metrics": {
       "loading": "Loading metrics…",

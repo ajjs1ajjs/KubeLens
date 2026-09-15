@@ -19,6 +19,10 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: (url: string) => mockOpenUrl(url),
 }));
 
+vi.mock("sonner", () => ({
+  toast: { info: vi.fn() },
+}));
+
 function withConnectedCluster(connected: boolean) {
   useClusterStore.setState({
     clusters: [
@@ -126,5 +130,19 @@ describe("useUpdate", () => {
     expect(mockOpenUrl).toHaveBeenCalledWith(
       "https://github.com/ajjs1ajjs/KubeLens/releases/tag/v0.3.0",
     );
+  });
+
+  it("falls back to the releases page for a malformed version", async () => {
+    withConnectedCluster(true);
+    mockCheck.mockResolvedValue({ version: "0.3.0/../../evil" });
+
+    const { result } = renderHook(() => useUpdate());
+    await waitFor(() => expect(result.current.status).toBe("available"));
+
+    await act(async () => {
+      await result.current.openReleasePage();
+    });
+
+    expect(mockOpenUrl).toHaveBeenCalledWith("https://github.com/ajjs1ajjs/KubeLens/releases");
   });
 });

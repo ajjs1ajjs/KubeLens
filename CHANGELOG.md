@@ -1,6 +1,20 @@
 # Changelog
 
-## v0.3.23
+## Unreleased (security audit round)
+
+No version bump: changes ride the next auto-release. `npm run check` green (133 frontend + 36 Rust tests), clippy `-D warnings` clean, `cargo fmt` clean.
+
+- **CRITICAL — updater signing key rotated:** the `pubkey` in `tauri.conf.json` was Tauri's public docs-example key (anyone could sign a valid malicious update). Generated a fresh keypair, pinned the new pubkey, stored the private key + password in GitHub Secrets, wiped local copies. Old artifacts are rejected by the updater from now on.
+- **Helm label-selector injection closed:** release names validated as DNS-1123 before interpolation; exact `name=` label match enforced after listing; revision version clamped to >= 1.
+- **Kubeconfig handling hardened:** symlink sources rejected, 2 MiB size cap, `0700`/`0600` perms on managed storage (Unix; Windows inherits profile ACLs), delete/read confined to the managed dir via canonicalization, rename validated, unknown active ids rejected, filename-only logging.
+- **Logs/exec/port-forward bounded:** one-shot logs clamped (`tail` 1–5000, 5 MiB cap + truncation note), stdin queue bounded (256, drop on overflow), task maps cleaned on natural completion, one port-forward stream per connection (+ startup probe), namespace added to `PortForwardInfo`.
+- **Apply path corrected:** manifest GVK/namespace cross-checked against the context, `.force()` removed (409s surface), scale capped at 10 000, resource coordinates validated, server errors generalized, `restartedAt` in RFC3339.
+- **Rate limiter fixed:** single bucket per group (no more attacker-keyed bypass/growth), stale-bucket eviction, read paths limited.
+- **Shell plugin removed** (unused attack surface): Cargo dep, `lib.rs` init, capability, npm dep (pruned from lock).
+- **Supply chain:** all workflow actions SHA-pinned, least-privilege permissions, pinned runners, `npm audit` + `cargo audit` gates, `cargo-deny` config, Dependabot (npm + cargo + actions), `package-lock.json` re-synced to 0.3.28 (was 0.3.10), lockfiles covered by `check-versions.mjs`, bump flows sync locks, `engines` + `packageManager`, pinned Rust 1.97.1 toolchain, `rustls` 0.23.45, SHA256SUMS + provenance attestations on releases, `environment: production` gate, strict tag pattern.
+- **Frontend:** terminal buffer capped + batched writes + scrollback + paste confirm + untrusted-output hint, unbounded log arrays fixed, Secret/env/Helm-values masking with reveal + copy, `__proto__` guard in `readPath`, sanitized log filenames, scale clamp, YAML size + syntax gate, updater version validation, no silent clipboard overwrite, real download progress, i18n storage guard.
+- **Landing + docs:** `site/` CSP + external `app.js` (no inline handlers), `index.html` CSP meta, CSP hardening directives in Tauri config, DEPLOYMENT version/secret docs fixed, `SECURITY.md` added.
+- **Accepted risks:** managed kubeconfigs necessarily keep tokens on disk (perms enforced; OS keychain is future work); generic resource API inherently exposes Secrets to the renderer (masked in UI); single GitHub updater endpoint; no Apple notarization.
 
 - **Searchable namespace dropdown:** replaced non-searchable `Select` with searchable `NamespaceSelect` component using `Command` + `Popover` pattern, allowing filtering namespaces by name.
 - **Column sorting:** added `accessorKey` and `sortingValue` to all resource table columns (Pod ready/status/restarts/controlled-by/node/qos, Node status/roles/version, Namespace status, ConfigMap/Secret data count, PV/PVC status, Ingress address, Service type/cluster-ip, Job completions). Previously only Name, Namespace, and Age were sortable.

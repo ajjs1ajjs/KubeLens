@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowDownToLine, ArrowUpFromLine, Loader2 } from "lucide-react";
+import { MaskedBlock } from "@/components/secret-value";
 import {
   Select,
   SelectContent,
@@ -110,9 +111,11 @@ export function ReleaseDiffTab({ context, name, configId }: ReleaseDiffTabProps)
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto">
           <div>
             <p className="text-muted-foreground mb-1 text-xs">{t("helm.values")}</p>
-            <DiffView
-              lines={diffLines(baseDetail.data?.values ?? "", nextDetail.data?.values ?? "")}
-            />
+            <MaskedBlock>
+              <DiffView
+                lines={diffLines(baseDetail.data?.values ?? "", nextDetail.data?.values ?? "")}
+              />
+            </MaskedBlock>
           </div>
           <div>
             <p className="text-muted-foreground mb-1 text-xs">{t("helm.manifest")}</p>

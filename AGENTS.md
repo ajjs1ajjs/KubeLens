@@ -39,6 +39,11 @@ Run from repo root unless noted:
 - Path alias `@/` maps to `src/`.
 - Never commit secrets. kubeconfig tokens must never be logged or stored to
   disk; keep them in memory only.
+  - Documented exception: `add_cluster_config` copies whole kubeconfigs
+    (tokens included) into `managed_kubeconfigs/` — functionally required.
+    Compensations: `0700` dir / `0600` files on Unix (Windows inherits
+    profile ACLs), symlink + size validation, canonicalized confinement
+    for read/delete. OS keychain is future work.
 - No comments unless they explain non-obvious decisions.
 
 ## Testing

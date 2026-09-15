@@ -1,3 +1,5 @@
 [toolchain]
-channel = "stable"
+# Pinned exact channel: "stable" floats and silently changes the compiler
+# under CI. Bump deliberately via Dependabot (cargo ecosystem covers this).
+channel = "1.97.1"
 targets = ["x86_64-pc-windows-msvc", "aarch64-apple-darwin", "x86_64-apple-darwin"]

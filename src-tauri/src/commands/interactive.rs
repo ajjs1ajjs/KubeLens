@@ -18,6 +18,7 @@ pub async fn get_logs(
 ) -> Result<String, String> {
     let correlation_id = correlation_id();
     info!(correlation_id = %correlation_id, pod = %name, container = ?container, "Fetching pod logs");
+    check_rate_limit("logs")?;
     let result =
         crate::k8s::interactive::pod_logs(&manager, &ctx, &name, container, tail_lines).await;
     if result.is_err() {
@@ -38,8 +39,7 @@ pub async fn follow_logs(
     container: Option<String>,
 ) -> Result<String, String> {
     let correlation_id = correlation_id();
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("logs", &key)?;
+    check_rate_limit("logs")?;
     info!(correlation_id = %correlation_id, pod = %name, container = ?container, "Starting log follow");
     logs.start(&manager, app, ctx, name, container).await
 }
@@ -66,8 +66,7 @@ pub async fn exec_shell(
     command: Vec<String>,
 ) -> Result<String, String> {
     let correlation_id = correlation_id();
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("exec", &key)?;
+    check_rate_limit("exec")?;
     info!(correlation_id = %correlation_id, pod = %name, container = ?container, command = ?command, "Starting exec session");
     terminals
         .start(&manager, app, ctx, name, container, command)
@@ -103,8 +102,7 @@ pub async fn start_port_forward(
     remote_port: u16,
 ) -> Result<PortForwardStart, String> {
     let correlation_id = correlation_id();
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("port_forward", &key)?;
+    check_rate_limit("port_forward")?;
     info!(correlation_id = %correlation_id, pod = %name, remote_port = remote_port, "Starting port forward");
     forwards.start(&manager, ctx, name, remote_port).await
 }

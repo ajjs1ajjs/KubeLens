@@ -33,7 +33,10 @@ export function LogsViewer({ ctx, name, containers, selectedContainer }: LogsVie
 
   const handleSave = React.useCallback(() => {
     if (!text) return;
-    const fileName = `${name}-${container || "logs"}.log`;
+    // Pod/container names come from the cluster: strip anything exotic
+    // before using them as a download filename.
+    const safe = (s: string) => s.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 100) || "logs";
+    const fileName = `${safe(name)}-${safe(container || "logs")}.log`;
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

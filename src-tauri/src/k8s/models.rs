@@ -97,6 +97,8 @@ pub struct PortForwardInfo {
     pub id: String,
     /// Kubeconfig context (cluster) name.
     pub context: String,
+    /// Namespace of the target pod (disambiguates same pod names).
+    pub namespace: String,
     /// Pod name.
     pub name: String,
     /// Remote port on the pod.

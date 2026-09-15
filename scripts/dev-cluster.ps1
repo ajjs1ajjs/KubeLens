@@ -26,6 +26,10 @@ function Check-Command($name, $installHint) {
 Check-Command "kind" "Install it with: winget install Kind.Kind"
 Check-Command "docker" "Install Docker Desktop from https://www.docker.com/products/docker-desktop/"
 
+# Pinned KinD node image: `kind create cluster` otherwise pulls whatever is
+# newest, silently changing the test cluster under us.
+$kindNodeImage = "kindest/node:v1.33.1"
+
 if ($Status) {
   kind get clusters
   exit 0
@@ -46,8 +50,8 @@ $existing = kind get clusters
 if ($existing -match $clusterName) {
   Write-Host "Cluster '$clusterName' already exists." -ForegroundColor Green
 } else {
-  Write-Host "Creating cluster '$clusterName'..." -ForegroundColor Cyan
-  kind create cluster --name $clusterName
+  Write-Host "Creating cluster '$clusterName' ($kindNodeImage)..." -ForegroundColor Cyan
+  kind create cluster --name $clusterName --image $kindNodeImage
 }
 
 $kubeconfig = Join-Path $HOME ".kube" "config"

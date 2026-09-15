@@ -13,6 +13,7 @@ pub async fn list_resources(
     manager: State<'_, ClusterManager>,
     ctx: ResourceContext,
 ) -> Result<Vec<serde_json::Value>, String> {
+    check_rate_limit("read")?;
     resources::list(&manager, &ctx).await
 }
 
@@ -23,6 +24,7 @@ pub async fn get_resource(
     ctx: ResourceContext,
     name: String,
 ) -> Result<serde_json::Value, String> {
+    check_rate_limit("read")?;
     resources::get(&manager, &ctx, &name).await
 }
 
@@ -33,8 +35,7 @@ pub async fn delete_resource(
     ctx: ResourceContext,
     name: String,
 ) -> Result<(), String> {
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("mutating", &key)?;
+    check_rate_limit("mutating")?;
     resources::delete(&manager, &ctx, &name).await
 }
 
@@ -45,8 +46,7 @@ pub async fn apply_yaml(
     ctx: ResourceContext,
     yaml: String,
 ) -> Result<serde_json::Value, String> {
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("mutating", &key)?;
+    check_rate_limit("mutating")?;
     resources::apply_yaml(&manager, &ctx, &yaml).await
 }
 
@@ -58,8 +58,7 @@ pub async fn scale_resource(
     name: String,
     replicas: i32,
 ) -> Result<(), String> {
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("mutating", &key)?;
+    check_rate_limit("mutating")?;
     resources::scale(&manager, &ctx, &name, replicas).await
 }
 
@@ -70,8 +69,7 @@ pub async fn restart_resource(
     ctx: ResourceContext,
     name: String,
 ) -> Result<(), String> {
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("mutating", &key)?;
+    check_rate_limit("mutating")?;
     resources::restart(&manager, &ctx, &name).await
 }
 
@@ -83,8 +81,7 @@ pub async fn start_watch(
     watch: State<'_, WatchManager>,
     ctx: ResourceContext,
 ) -> Result<String, String> {
-    let key = format!("{}:{}", ctx.config_id, ctx.context);
-    check_rate_limit("watch", &key)?;
+    check_rate_limit("watch")?;
     watch.start(&manager, app, ctx).await
 }
 

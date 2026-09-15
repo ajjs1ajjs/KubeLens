@@ -4,12 +4,20 @@ import type { ResourceContext } from "@/lib/k8s/types";
 
 export interface TerminalSession {
   id: string;
-  /** Text emitted by the pod so far. */
+  /** Text emitted by the pod so far (capped, head dropped). */
   output: string;
   status: "connecting" | "open" | "closed";
   error: string | null;
   write: (data: string) => void;
   close: () => void;
+}
+
+/** Output buffer cap: a noisy pod must not grow the renderer unboundedly. */
+const MAX_OUTPUT_CHARS = 512 * 1024;
+
+function appendCapped(current: string, chunk: string): string {
+  const next = current + chunk;
+  return next.length > MAX_OUTPUT_CHARS ? next.slice(next.length - MAX_OUTPUT_CHARS) : next;
 }
 
 /**
@@ -29,6 +37,18 @@ export function useTerminal(
   const outputRef = useRef("");
   const idRef = useRef<string | null>(null);
   const statusRef = useRef<TerminalSession["status"]>("connecting");
+  const flushScheduled = useRef(false);
+
+  // Batches per-chunk output into one React update per frame: a flooding
+  // pod would otherwise re-render on every event.
+  const scheduleFlush = useCallback(() => {
+    if (flushScheduled.current) return;
+    flushScheduled.current = true;
+    requestAnimationFrame(() => {
+      flushScheduled.current = false;
+      setSession((s) => (s ? { ...s, output: outputRef.current } : s));
+    });
+  }, []);
 
   const close = useCallback(() => {
     const id = idRef.current;
@@ -69,9 +89,9 @@ export function useTerminal(
         idRef.current = id;
         unlisten.current = await subscribeExecOutput(id, (event) => {
           if (event.action === "output" && event.data !== undefined) {
-            outputRef.current += event.data;
+            outputRef.current = appendCapped(outputRef.current, event.data);
             if (!disposed && statusRef.current !== "closed") {
-              setSession((s) => (s ? { ...s, output: outputRef.current } : s));
+              scheduleFlush();
             }
           }
           if (event.action === "error") {
@@ -111,7 +131,7 @@ export function useTerminal(
       idRef.current = null;
       if (id) void k8sApi.stopExec(id);
     };
-  }, [ctx, name, container, command, nonce, close]);
+  }, [ctx, name, container, command, nonce, close, scheduleFlush]);
 
   return session;
 }

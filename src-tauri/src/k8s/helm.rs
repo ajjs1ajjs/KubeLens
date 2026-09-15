@@ -8,6 +8,7 @@
 use k8s_openapi::api::core::v1::Secret;
 use kube::api::{Api, DeleteParams, ListParams, ObjectList};
 use prost::Message;
+use std::io::Read as _;
 
 use crate::k8s::cluster_manager::ClusterManager;
 use crate::k8s::models::{HelmReleaseDetail, HelmReleaseRevision, HelmReleaseSummary};
@@ -17,6 +18,24 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 
 /// Label Helm puts on every release storage secret.
 const OWNER_LABEL: &str = "owner=helm";
+
+/// Validates a Helm release name before it is interpolated into a label
+/// selector. A crafted name (`,`, `=`, parens) would break out of the
+/// `name=` clause and match other releases' storage secrets.
+fn validate_release_name(name: &str) -> Result<(), String> {
+    let ok = !name.is_empty()
+        && name.len() <= 253
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        && !name.starts_with('-')
+        && !name.ends_with('-');
+    if ok {
+        Ok(())
+    } else {
+        Err("Invalid Helm release name".to_string())
+    }
+}
 
 fn releases_api(client: &kube::Client) -> Api<Secret> {
     Api::all(client.clone())
@@ -65,6 +84,7 @@ pub async fn release_detail(
     context: &str,
     name: &str,
 ) -> Result<HelmReleaseDetail, String> {
+    validate_release_name(name)?;
     let client = manager.client_for(config_id, context).await?;
     let secrets = revision_secrets(&client, name).await?;
     let (_, secret) = secrets
@@ -90,6 +110,10 @@ pub async fn release_detail_at(
     name: &str,
     version: i32,
 ) -> Result<HelmReleaseDetail, String> {
+    validate_release_name(name)?;
+    if version < 1 {
+        return Err("Invalid revision version".to_string());
+    }
     let client = manager.client_for(config_id, context).await?;
     let secrets = revision_secrets(&client, name).await?;
     let (_, secret) = secrets
@@ -114,6 +138,7 @@ pub async fn release_revisions(
     context: &str,
     name: &str,
 ) -> Result<Vec<HelmReleaseRevision>, String> {
+    validate_release_name(name)?;
     let client = manager.client_for(config_id, context).await?;
     let secrets = revision_secrets(&client, name).await?;
     let mut revisions = Vec::new();
@@ -146,6 +171,15 @@ async fn revision_secrets(client: &kube::Client, name: &str) -> Result<Vec<(i32,
         .items
         .into_iter()
         .filter(|s| s.type_.as_deref() == Some("helm.sh/release.v1"))
+        // Belt and braces: only the exact release name, even if the
+        // selector ever matched more broadly.
+        .filter(|s| {
+            s.metadata
+                .labels
+                .as_ref()
+                .and_then(|l| l.get("name"))
+                .is_some_and(|n| n == name)
+        })
         .filter_map(|s| {
             s.metadata
                 .labels
@@ -166,6 +200,7 @@ pub async fn uninstall_release(
     context: &str,
     name: &str,
 ) -> Result<(), String> {
+    validate_release_name(name)?;
     let client = manager.client_for(config_id, context).await?;
     let api = releases_api(&client);
     let list: ObjectList<Secret> = api
@@ -178,6 +213,15 @@ pub async fn uninstall_release(
 
     let mut deleted = 0usize;
     for secret in list.items {
+        let labels_match = secret
+            .metadata
+            .labels
+            .as_ref()
+            .and_then(|l| l.get("name"))
+            .is_some_and(|n| n == name);
+        if !labels_match {
+            continue;
+        }
         let name = secret
             .metadata
             .name
@@ -233,6 +277,10 @@ fn decode_release_secret(secret: &Secret) -> Result<HelmReleaseSummary, String> 
     })
 }
 
+/// Upper bound for decompressed Helm payloads. Release secrets are
+/// cluster-writable, so unbounded `read_to_end` on gzip is a gzip bomb.
+const DECOMPRESS_LIMIT: u64 = 10 * 1024 * 1024;
+
 /// Decodes and decompresses the release secret payload.
 fn decode_payload(secret: &Secret) -> Result<Option<DecodedPayload>, String> {
     let data = secret
@@ -250,8 +298,11 @@ fn decode_payload(secret: &Secret) -> Result<Option<DecodedPayload>, String> {
 
     let mut decoder = flate2::read::GzDecoder::new(&gzipped[..]);
     let mut raw = Vec::new();
-    std::io::Read::read_to_end(&mut decoder, &mut raw)
+    std::io::Read::read_to_end(&mut decoder.by_ref().take(DECOMPRESS_LIMIT + 1), &mut raw)
         .map_err(|e| format!("Release payload is not valid gzip: {e}"))?;
+    if raw.len() as u64 > DECOMPRESS_LIMIT {
+        return Err("Release payload exceeds size limit".to_string());
+    }
 
     let release = Release::decode(&raw[..]).map_err(|e| format!("Invalid release payload: {e}"))?;
     Ok(Some(release.into()))
@@ -400,6 +451,9 @@ struct ChartMetadata {
 
 /// Decodes the base64-encoded chart metadata YAML.
 fn decode_chart_metadata(encoded: &str) -> Result<ChartMetadata, String> {
+    if encoded.len() > 1024 * 1024 {
+        return Err("Chart metadata exceeds size limit".to_string());
+    }
     use base64::Engine as _;
     let yaml = base64::engine::general_purpose::STANDARD
         .decode(encoded)
@@ -503,6 +557,30 @@ mod tests {
     use super::*;
     use crate::k8s::mock_api;
     use crate::k8s::testsupport::{CTX, manager_with_mock};
+
+    #[test]
+    fn rejects_malicious_release_names() {
+        assert!(validate_release_name("web").is_ok());
+        assert!(validate_release_name("my-app-2").is_ok());
+        for bad in [
+            "",
+            "UPPER",
+            "has space",
+            "a,b",
+            "name=x",
+            "a(b)",
+            "a/b",
+            "-lead",
+            "trail-",
+            "under_score",
+            &"a".repeat(254),
+        ] {
+            assert!(
+                validate_release_name(bad).is_err(),
+                "name should be rejected: {bad}"
+            );
+        }
+    }
 
     #[test]
     fn decodes_release_payload() {

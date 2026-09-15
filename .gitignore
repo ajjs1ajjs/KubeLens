@@ -15,6 +15,15 @@ dist-ssr
 # Tauri signing keys (NEVER commit these)
 .tauri-keys
 .tauri-keys.pub
+privkey.txt
+pubkey.txt
+*.key
+*.pem
+.env
+
+# Rust / coverage artifacts
+target/
+coverage/
 
 # Release artifacts
 latest.json

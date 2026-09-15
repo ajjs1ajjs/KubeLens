@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SecretGate } from "@/components/secret-value";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatAge, meta, podSummary, readyReplicas, readPath } from "@/lib/k8s/object";
@@ -190,6 +191,12 @@ export function ResourceDetail({
 
   const raw = useMemo(() => (object ? JSON.stringify(object, null, 2) : ""), [object]);
   const yamlContent = useMemo(() => (object ? manifestFromObject(object) : ""), [object]);
+  // Secret payloads are base64 (trivially decodable) and screenshot-visible:
+  // mask both tabs until the user explicitly reveals them. Reveal state is
+  // keyed by object identity so switching resources re-masks automatically.
+  const isSecret = kind === "Secret";
+  const [revealedFor, setRevealedFor] = useState<object | null>(null);
+  const secretRevealed = revealedFor === object;
 
   const m = object ? meta(object) : null;
   const isPod = kind === "Pod";
@@ -367,19 +374,27 @@ export function ResourceDetail({
               </TabsList>
             </div>
             <TabsContent value="yaml" className="mt-3 data-[state=inactive]:hidden">
-              <div className="bg-background min-h-[500px] rounded-md border">
-                <YamlEditor
-                  value={yamlContent}
-                  onChange={() => {}}
-                  readOnly
-                  className="!border-0"
-                />
-              </div>
+              {isSecret && !secretRevealed ? (
+                <SecretGate onReveal={() => setRevealedFor(object)} />
+              ) : (
+                <div className="bg-background min-h-[500px] rounded-md border">
+                  <YamlEditor
+                    value={yamlContent}
+                    onChange={() => {}}
+                    readOnly
+                    className="!border-0"
+                  />
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="raw" className="mt-3 data-[state=inactive]:hidden">
-              <pre className="bg-muted/50 rounded-md border p-3 text-xs break-all whitespace-pre-wrap">
-                {raw}
-              </pre>
+              {isSecret && !secretRevealed ? (
+                <SecretGate onReveal={() => setRevealedFor(object)} />
+              ) : (
+                <pre className="bg-muted/50 rounded-md border p-3 text-xs break-all whitespace-pre-wrap">
+                  {raw}
+                </pre>
+              )}
             </TabsContent>
           </Tabs>
         )}

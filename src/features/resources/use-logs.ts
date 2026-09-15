@@ -89,10 +89,9 @@ export function useLogs(
           }
           const line = event.line;
           if (event.action === "line" && line !== undefined) {
-            setLiveLines((lines) => {
-              lines.push(line);
-              return lines;
-            });
+            setLiveLines((lines) =>
+              lines.length > 10000 ? [...lines.slice(-10000), line] : [...lines, line],
+            );
           }
           if (event.action === "done") {
             setFollowing(false);

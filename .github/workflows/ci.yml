@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -13,11 +16,12 @@ concurrency:
 jobs:
   checks:
     name: Checks (frontend)
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
@@ -25,7 +29,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify version sync (package.json / tauri.conf.json / Cargo.toml)
+      - name: Security audit (npm, high+)
+        run: npm audit --audit-level=high
+
+      - name: Verify version sync (manifests + locks)
         run: npm run check:versions
 
       - name: Lint
@@ -45,16 +52,17 @@ jobs:
 
   test-rust:
     name: Test Rust
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           components: rustfmt, clippy
           targets: x86_64-pc-windows-msvc
@@ -74,18 +82,25 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
+      - name: Cargo advisory audit
+        working-directory: src-tauri
+        run: |
+          cargo install cargo-audit --version 0.22.0 --locked
+          cargo audit
+
   test-rust-macos:
     name: Test Rust (macOS)
-    runs-on: macos-latest
+    runs-on: macos-15
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           components: rustfmt, clippy
           targets: aarch64-apple-darwin
@@ -108,16 +123,17 @@ jobs:
   bundle:
     name: Bundle
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
       - name: Install dependencies
         run: npm ci
@@ -139,7 +155,7 @@ jobs:
         run: npm run tauri -- build --bundles nsis
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: kubelens-windows-latest
           path: |

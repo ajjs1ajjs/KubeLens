@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, ShieldCheck, ShieldOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SecretValue } from "@/components/secret-value";
 import { formatCpu, formatMemory } from "./use-metrics";
 import { formatProbeHandler, type ContainerInfo } from "./pod-container-info";
 
@@ -122,7 +123,7 @@ export function ContainerDetail({ info }: { info: ContainerInfo }) {
           {info.env.map((env, i) => (
             <DetailRow key={i} label={env.name}>
               {env.value ? (
-                <span className="break-all">{env.value}</span>
+                <SecretValue value={env.value} />
               ) : env.valueFrom ? (
                 <span className="text-muted-foreground italic">
                   from {Object.keys(env.valueFrom)[0]}

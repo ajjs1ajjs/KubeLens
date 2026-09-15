@@ -8,6 +8,48 @@ use kube::api::{
 use crate::k8s::cluster_manager::ClusterManager;
 use crate::k8s::models::ResourceContext;
 
+/// Shape limits for frontend-supplied resource coordinates. The API server
+/// is authoritative, but absurd values should not even leave the backend.
+const MAX_NAME_LEN: usize = 253;
+const MAX_KIND_LEN: usize = 63;
+const MAX_REPLICAS: i32 = 10_000;
+
+/// Validates a resource context's shape (lengths, kind charset, namespace).
+fn validate_ctx(ctx: &ResourceContext) -> Result<(), String> {
+    if ctx.version.is_empty() || ctx.version.len() > MAX_KIND_LEN {
+        return Err("Invalid resource version".to_string());
+    }
+    if ctx.kind.is_empty()
+        || ctx.kind.len() > MAX_KIND_LEN
+        || !ctx.kind.bytes().all(|b| b.is_ascii_alphabetic())
+    {
+        return Err("Invalid resource kind".to_string());
+    }
+    if ctx.namespace.len() > MAX_NAME_LEN {
+        return Err("Invalid namespace".to_string());
+    }
+    if ctx.context.len() > MAX_NAME_LEN || ctx.config_id.len() > MAX_NAME_LEN {
+        return Err("Invalid cluster reference".to_string());
+    }
+    Ok(())
+}
+
+/// Validates a resource name (DNS subdomain, the common case for object names).
+fn validate_name(name: &str) -> Result<(), String> {
+    let ok = !name.is_empty()
+        && name.len() <= MAX_NAME_LEN
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'.')
+        && !name.starts_with(['-', '.'])
+        && !name.ends_with(['-', '.']);
+    if ok {
+        Ok(())
+    } else {
+        Err("Invalid resource name".to_string())
+    }
+}
+
 /// Builds the `ApiResource` descriptor for a resource context.
 pub fn api_resource(ctx: &ResourceContext) -> ApiResource {
     let gvk = GroupVersionKind::gvk(&ctx.group, &ctx.version, &ctx.kind);
@@ -32,6 +74,7 @@ pub async fn list(
     manager: &ClusterManager,
     ctx: &ResourceContext,
 ) -> Result<Vec<serde_json::Value>, String> {
+    validate_ctx(ctx)?;
     let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let list = api.list(&ListParams::default()).await.map_err(kube_error)?;
@@ -47,6 +90,8 @@ pub async fn get(
     ctx: &ResourceContext,
     name: &str,
 ) -> Result<serde_json::Value, String> {
+    validate_ctx(ctx)?;
+    validate_name(name)?;
     let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let object = api.get(name).await.map_err(kube_error)?;
@@ -59,6 +104,8 @@ pub async fn delete(
     ctx: &ResourceContext,
     name: &str,
 ) -> Result<(), String> {
+    validate_ctx(ctx)?;
+    validate_name(name)?;
     let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let _ = api
@@ -113,7 +160,45 @@ pub async fn apply_yaml(
     if !value.is_object() {
         return Err("Manifest must be a single YAML document object".to_string());
     }
+    validate_ctx(ctx)?;
     let name = manifest_name(&value)?;
+    validate_name(&name)?;
+
+    // Cross-check the manifest against the context it is applied into: the
+    // manifest's own GVK/namespace win for scoping, the caller's `ctx` only
+    // decides which cluster client to use. A manifest for another namespace
+    // or kind must not silently land in the wrong place.
+    let gvk = || {
+        let api_version = value
+            .pointer("/apiVersion")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let kind = value
+            .pointer("/kind")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let mut parts = api_version.splitn(2, '/');
+        let (group, version) = match (parts.next(), parts.next()) {
+            (Some(g), Some(v)) => (g.to_string(), v.to_string()),
+            (Some(v), None) => (String::new(), v.to_string()),
+            _ => (String::new(), String::new()),
+        };
+        (group, version, kind.to_string())
+    };
+    let (group, version, kind) = gvk();
+    if group != ctx.group || version != ctx.version || kind != ctx.kind {
+        return Err(
+            "Manifest apiVersion/kind does not match the selected resource type".to_string(),
+        );
+    }
+    if let Some(ns) = value
+        .pointer("/metadata/namespace")
+        .and_then(|v| v.as_str())
+        && !ns.is_empty()
+        && ns != ctx.namespace
+    {
+        return Err("Manifest namespace does not match the selected namespace".to_string());
+    }
 
     // Server-side apply takes the user's document as-is (minus status).
     let mut body = value.clone();
@@ -125,14 +210,19 @@ pub async fn apply_yaml(
 
     let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
-    let params = PatchParams::apply("kubelens").force();
+    // No `.force()`: stomping other field managers' conflicts silently is
+    // wrong — surface 409s so the user can decide.
+    let params = PatchParams::apply("kubelens");
     let applied = api
         .patch(&name, &params, &Patch::Apply(&object))
         .await
         .map_err(|err| match &err {
-            kube::Error::Api(resp) if resp.code == 404 => format!(
-                "Resource {name} does not exist in this context — it may be cluster-scoped or in a different namespace"
-            ),
+            kube::Error::Api(resp) if resp.code == 404 => {
+                "Resource does not exist in this context".to_string()
+            }
+            kube::Error::Api(resp) if resp.code == 409 => {
+                "Apply conflict: another manager owns conflicting fields".to_string()
+            }
             _ => kube_error(err),
         })?;
 
@@ -140,7 +230,12 @@ pub async fn apply_yaml(
 }
 
 pub fn kube_error(err: kube::Error) -> String {
-    format!("Kubernetes API error: {err}")
+    // Generic user-facing message: raw server errors leak topology and
+    // internals to the renderer. Detail stays in server-side logs.
+    match &err {
+        kube::Error::Api(resp) => format!("Kubernetes API error (code {})", resp.code),
+        _ => "Kubernetes request failed".to_string(),
+    }
 }
 
 /// Patches `spec.replicas` on a scalable workload (Deployment, StatefulSet,
@@ -151,9 +246,11 @@ pub async fn scale(
     name: &str,
     replicas: i32,
 ) -> Result<(), String> {
-    if replicas < 0 {
-        return Err("Replicas must be a non-negative integer".to_string());
+    if !(0..=MAX_REPLICAS).contains(&replicas) {
+        return Err(format!("Replicas must be between 0 and {MAX_REPLICAS}"));
     }
+    validate_ctx(ctx)?;
+    validate_name(name)?;
     let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let body = serde_json::json!({ "spec": { "replicas": replicas } });
@@ -171,6 +268,8 @@ pub async fn restart(
     ctx: &ResourceContext,
     name: &str,
 ) -> Result<(), String> {
+    validate_ctx(ctx)?;
+    validate_name(name)?;
     let client = manager.client_ctx(ctx).await?;
     let api = api(&client, ctx);
     let now = chrono_now();
@@ -215,14 +314,56 @@ pub async fn restart(
 }
 
 fn chrono_now() -> String {
+    // RFC3339 like kubectl's restartedAt (epoch seconds break some tooling).
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs().to_string())
-        .unwrap_or_else(|_| "0".to_string())
+        .map(|d| {
+            // Minimal RFC3339 UTC formatter without pulling chrono.
+            let secs = d.as_secs();
+            format_rfc3339(secs)
+        })
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
+}
+
+/// Days-since-epoch to RFC3339 UTC. Leap seconds ignored (same as kubectl).
+fn format_rfc3339(secs: u64) -> String {
+    const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let days = secs / 86400;
+    let time = secs % 86400;
+    let (mut y, mut d) = (1970u64, days);
+    loop {
+        let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+        let year_days = if leap { 366 } else { 365 };
+        if d < year_days {
+            break;
+        }
+        d -= year_days;
+        y += 1;
+    }
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let mut m = 0;
+    while m < 12 {
+        let dim = DAYS[m as usize] as u64 + if m == 1 && leap { 1 } else { 0 };
+        if d < dim {
+            break;
+        }
+        d -= dim;
+        m += 1;
+    }
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        y,
+        m + 1,
+        d + 1,
+        time / 3600,
+        (time % 3600) / 60,
+        time % 60
+    )
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{format_rfc3339, validate_ctx, validate_name};
     use crate::k8s::mock_api;
     use crate::k8s::resources;
     use crate::k8s::testsupport::{manager_with_mock, pod_ctx};
@@ -313,8 +454,58 @@ spec:
         );
     }
 
+    #[test]
+    fn validates_context_and_name_shapes() {
+        let mut ctx = crate::k8s::testsupport::pod_ctx();
+        assert!(validate_ctx(&ctx).is_ok());
+        assert!(validate_name("web-2").is_ok());
+        ctx.kind = "P@d".into();
+        assert!(validate_ctx(&ctx).is_err());
+        ctx.kind = "Pod".into();
+        ctx.namespace = "a".repeat(300);
+        assert!(validate_ctx(&ctx).is_err());
+        for bad in [
+            "",
+            "UPPER",
+            "has space",
+            "a/b",
+            "-x",
+            "x-",
+            &"a".repeat(300),
+        ] {
+            assert!(validate_name(bad).is_err(), "should reject: {bad}");
+        }
+    }
+
+    #[test]
+    fn formats_rfc3339() {
+        assert_eq!(format_rfc3339(0), "1970-01-01T00:00:00Z");
+        assert_eq!(format_rfc3339(1_700_000_000), "2023-11-14T22:13:20Z");
+        assert_eq!(format_rfc3339(951_782_400), "2000-02-29T00:00:00Z");
+    }
+
     #[tokio::test]
-    async fn rejects_negative_replica_count() {
+    async fn rejects_cross_namespace_apply() {
+        let server = mock_api::MockApiServer::start().await;
+        let manager = manager_with_mock(&server).await;
+        let ctx = pod_ctx();
+
+        let other_ns =
+            pod_yaml("pod-c", "nginx:1.25").replace("namespace: default", "namespace: other");
+        let err = resources::apply_yaml(&manager, &ctx, &other_ns)
+            .await
+            .expect_err("cross-namespace apply");
+        assert!(err.contains("namespace"), "unexpected error: {err}");
+
+        let wrong_kind = pod_yaml("pod-c", "nginx:1.25").replace("kind: Pod", "kind: Deployment");
+        let err = resources::apply_yaml(&manager, &ctx, &wrong_kind)
+            .await
+            .expect_err("cross-kind apply");
+        assert!(err.contains("kind"), "unexpected error: {err}");
+    }
+
+    #[tokio::test]
+    async fn rejects_bad_replica_count() {
         let server = mock_api::MockApiServer::start().await;
         let manager = manager_with_mock(&server).await;
         let ctx = pod_ctx();
@@ -322,6 +513,11 @@ spec:
         let err = resources::scale(&manager, &ctx, "pod-a", -1)
             .await
             .expect_err("negative replicas");
-        assert!(err.contains("non-negative"), "unexpected error: {err}");
+        assert!(err.contains("between 0"), "unexpected error: {err}");
+
+        let err = resources::scale(&manager, &ctx, "pod-a", 10_001)
+            .await
+            .expect_err("absurd replicas");
+        assert!(err.contains("between 0"), "unexpected error: {err}");
     }
 }

@@ -54,6 +54,14 @@ describe("object helpers", () => {
     expect(readPath(pod, "/missing")).toBeUndefined();
   });
 
+  it("refuses prototype-chain segments", () => {
+    const evil = JSON.parse('{"__proto__": {"polluted": true}, "a": {"constructor": 1}}');
+    expect(readPath(evil, "/__proto__/polluted")).toBeUndefined();
+    expect(readPath(evil, "/a/constructor")).toBeUndefined();
+    expect(readPath(evil, "/a/prototype")).toBeUndefined();
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
   it("summarizes pod readiness and restarts", () => {
     expect(podSummary(pod).ready).toBe("1/2");
     expect(podSummary(pod).restarts).toBe(3);

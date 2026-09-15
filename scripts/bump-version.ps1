@@ -3,7 +3,8 @@ param(
     [string]$Version
 )
 
-# Bumps the KubeLens version across Cargo.toml, tauri.conf.json and package.json
+# Bumps the KubeLens version across Cargo.toml, tauri.conf.json, package.json,
+# Info.plist (plus package-lock.json and the Cargo.lock root stanza)
 # and tags it as v<Version>. Requires a clean working tree and that the version
 # is a valid semver like 1.2.3.
 
@@ -20,7 +21,7 @@ function Set-VersionLine([string]$Path, [string]$Pattern) {
     if ($newContent -eq $content) {
         throw "Failed to bump version in $Path - pattern did not match. File may have unexpected formatting."
     }
-    Set-Content -Path $Path -Value $newContent -NoNewline
+    Set-Content -Path $Path -Value $newContent -NoNewline -Encoding utf8NoBOM
 }
 
 # --- Cargo.toml: version = "0.1.0" ---
@@ -38,7 +39,15 @@ $plistBefore = Get-Content $plistPath -Raw
 $plist = [regex]::Replace($plistBefore, '(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)', '${1}' + $Version + '${2}')
 $plist = [regex]::Replace($plist, '(<key>CFBundleShortVersionString</key>\s*<string>)[^<]*(</string>)', '${1}' + $Version + '${2}')
 if ($plist -eq $plistBefore) { throw "Failed to bump version in $plistPath - patterns did not match." }
-Set-Content -Path $plistPath -Value $plist -NoNewline
+Set-Content -Path $plistPath -Value $plist -NoNewline -Encoding utf8NoBOM
+
+# --- lockfiles: keep package-lock.json and Cargo.lock root in sync ---
+npm install --package-lock-only
+$lockPath = Join-Path $root "src-tauri\Cargo.lock"
+$lockBefore = Get-Content $lockPath -Raw
+$lock = [regex]::Replace($lockBefore, '(\[\[package\]\]\r?\nname = "kubelens"\r?\nversion = ")[^"]*(")', '${1}' + $Version + '${2}')
+if ($lock -eq $lockBefore) { throw "Failed to bump version in $lockPath - kubelens stanza not found." }
+Set-Content -Path $lockPath -Value $lock -NoNewline -Encoding utf8NoBOM
 
 # --- verify all three manifests are in sync ---
 $pkgVer = (Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json).version
@@ -58,10 +67,10 @@ Write-Host "Verified versions in sync: $Version"
 
 # --- tag ---
 $tag = "v$Version"
-# Stage only the three manifest files explicitly — never `git add -A`, which
+# Stage only the manifest + lock files explicitly — never `git add -A`, which
 # can sweep up untracked secrets (e.g. Tauri signing keys in privkey.txt) that
 # are not yet covered by .gitignore.
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src-tauri/Info.plist
+git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json src-tauri/Info.plist
 git commit -m "chore: release $tag"
 git tag $tag
 

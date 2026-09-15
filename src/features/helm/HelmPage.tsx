@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { GitBranch, Loader2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MaskedBlock } from "@/components/secret-value";
 import {
   Sheet,
   SheetContent,
@@ -92,9 +93,11 @@ function ReleaseDetailSheet({
                 <TabsTrigger value="diff">{t("helm.diff")}</TabsTrigger>
               </TabsList>
               <TabsContent value="values" className="min-h-0 flex-1 overflow-auto">
-                <pre className="bg-muted/50 rounded-md p-3 text-xs">
-                  {data?.values || t("helm.noValues")}
-                </pre>
+                <MaskedBlock>
+                  <pre className="bg-muted/50 rounded-md p-3 text-xs">
+                    {data?.values || t("helm.noValues")}
+                  </pre>
+                </MaskedBlock>
               </TabsContent>
               <TabsContent value="manifest" className="min-h-0 flex-1 overflow-auto">
                 <pre className="bg-muted/50 rounded-md p-3 text-xs">{data?.manifest || "—"}</pre>

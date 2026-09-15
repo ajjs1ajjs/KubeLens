@@ -9,9 +9,13 @@ export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 export const LANGUAGE_STORAGE_KEY = "kubelens-language";
 
 function detectLanguage(): Language {
-  const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  if (stored === "en" || stored === "uk") return stored;
-  if (navigator.language?.toLowerCase().startsWith("uk")) return "uk";
+  try {
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (stored === "en" || stored === "uk") return stored;
+    if (navigator.language?.toLowerCase().startsWith("uk")) return "uk";
+  } catch {
+    // Locked-down webviews can throw on storage access.
+  }
   return "en";
 }
 

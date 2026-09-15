@@ -25,6 +25,11 @@ fn pod_api(client: &Client, ctx: &ResourceContext) -> Api<Pod> {
     Api::namespaced(client.clone(), &ctx.namespace)
 }
 
+/// Upper bound for a one-shot log fetch: an unbounded blob from a
+/// compromised/noisy pod is an OOM vector.
+const MAX_LOG_BYTES: usize = 5 * 1024 * 1024;
+const MAX_TAIL_LINES: i64 = 5000;
+
 /// Fetches a pod's logs (no follow) as a single text blob.
 pub async fn pod_logs(
     manager: &ClusterManager,
@@ -35,19 +40,28 @@ pub async fn pod_logs(
 ) -> Result<String, String> {
     let client = manager.client_ctx(ctx).await?;
     let api = pod_api(&client, ctx);
+    let clamped_tail = tail_lines.map(|t| t.clamp(1, MAX_TAIL_LINES));
     let params = LogParams {
         container,
-        tail_lines,
+        tail_lines: clamped_tail,
         ..Default::default()
     };
     let reader = api.log_stream(name, &params).await.map_err(kube_err)?;
     let mut text = String::new();
+    let mut truncated = false;
     // Drain the buffered reader line by line so big outputs stay bounded.
     let mut lines = reader.lines();
     while let Some(line) = lines.next().await {
         let line = line.map_err(io_err)?;
+        if text.len() + line.len() + 1 > MAX_LOG_BYTES {
+            truncated = true;
+            break;
+        }
         text.push_str(&line);
         text.push('\n');
+    }
+    if truncated {
+        text.push_str("\n…[truncated: log exceeds 5 MiB]\n");
     }
     Ok(text)
 }
@@ -105,13 +119,13 @@ pub async fn stream_logs<F>(
 
 /// Manages follow-log subscriptions.
 pub struct LogManager {
-    tasks: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+    tasks: std::sync::Arc<Mutex<HashMap<String, tokio::task::AbortHandle>>>,
 }
 
 impl Default for LogManager {
     fn default() -> Self {
         Self {
-            tasks: Mutex::new(HashMap::new()),
+            tasks: std::sync::Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -130,11 +144,14 @@ impl LogManager {
         let emit_app = app.clone();
         let manager = manager.clone();
         let task_id = id.clone();
+        let tasks_map = self.tasks.clone();
+        let cleanup_id = id.clone();
         let task = tokio::spawn(async move {
             stream_logs(&manager, ctx, task_id, name, container, move |event| {
                 let _ = emit_app.emit(LOG_EVENT, event);
             })
             .await;
+            tasks_map.lock().unwrap().remove(&cleanup_id);
         });
         let abort_handle = task.abort_handle();
         self.tasks.lock().unwrap().insert(id.clone(), abort_handle);
@@ -151,15 +168,18 @@ impl LogManager {
 
 /// Manages exec terminal sessions (stdin/stdout bridged to the pod).
 pub struct TerminalManager {
-    tasks: Mutex<HashMap<String, tokio::task::AbortHandle>>,
-    inputs: Mutex<HashMap<String, mpsc::UnboundedSender<String>>>,
+    tasks: std::sync::Arc<Mutex<HashMap<String, tokio::task::AbortHandle>>>,
+    inputs: std::sync::Arc<Mutex<HashMap<String, mpsc::Sender<String>>>>,
 }
+
+/// Bounded stdin queue: a flooding frontend drops instead of growing memory.
+const STDIN_QUEUE: usize = 256;
 
 impl Default for TerminalManager {
     fn default() -> Self {
         Self {
-            tasks: Mutex::new(HashMap::new()),
-            inputs: Mutex::new(HashMap::new()),
+            tasks: std::sync::Arc::new(Mutex::new(HashMap::new())),
+            inputs: std::sync::Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -177,12 +197,17 @@ impl TerminalManager {
         command: Vec<String>,
     ) -> Result<String, String> {
         let id = uuid::Uuid::new_v4().to_string();
-        let (input_tx, input_rx) = mpsc::unbounded::<String>();
+        let (input_tx, input_rx) = mpsc::channel::<String>(STDIN_QUEUE);
         self.inputs.lock().unwrap().insert(id.clone(), input_tx);
 
         let emit_app = app.clone();
         let manager = manager.clone();
         let task_id = id.clone();
+        // Cleanup handles: a naturally completed session must not leak
+        // its map entries (previous code only removed them on explicit stop).
+        let tasks_map = self.tasks.clone();
+        let inputs_map = self.inputs.clone();
+        let cleanup_id = id.clone();
         let task = tokio::spawn(async move {
             run_exec(
                 &manager,
@@ -197,6 +222,8 @@ impl TerminalManager {
                 },
             )
             .await;
+            tasks_map.lock().unwrap().remove(&cleanup_id);
+            inputs_map.lock().unwrap().remove(&cleanup_id);
         });
         let abort_handle = task.abort_handle();
         self.tasks.lock().unwrap().insert(id.clone(), abort_handle);
@@ -205,13 +232,17 @@ impl TerminalManager {
 
     /// Forwards a chunk of terminal input to the pod's stdin.
     pub fn input(&self, id: &str, data: String) -> Result<(), String> {
-        let senders = self.inputs.lock().unwrap();
-        let sender = senders
+        let mut sender = self
+            .inputs
+            .lock()
+            .unwrap()
             .get(id)
+            .cloned()
             .ok_or_else(|| "No active terminal session with that id".to_string())?;
+        // Bounded queue: overflow drops (backpressure) instead of OOM.
         sender
-            .unbounded_send(data)
-            .map_err(|_| "Terminal session is closing".to_string())
+            .try_send(data)
+            .map_err(|_| "Terminal session is closing or input overflow".to_string())
     }
 
     /// Stops an exec session.
@@ -233,7 +264,7 @@ async fn run_exec<F>(
     name: String,
     container: Option<String>,
     command: Vec<String>,
-    mut input_rx: mpsc::UnboundedReceiver<String>,
+    mut input_rx: mpsc::Receiver<String>,
     emit: F,
 ) where
     F: Fn(ExecEvent) + Send + 'static,
@@ -385,14 +416,13 @@ impl PortForwardManager {
     ) -> Result<PortForwardStart, String> {
         let client = manager.client_ctx(&ctx).await?;
         let api = pod_api(&client, &ctx);
-        let mut pf = api
+        // Probe once so a bad pod/port fails fast instead of silently
+        // accepting local connections that go nowhere.
+        let probe = api
             .portforward(&name, &[remote_port])
             .await
             .map_err(kube_err)?;
-        let stream = pf
-            .take_stream(remote_port)
-            .ok_or_else(|| "Port-forward stream was not available".to_string())?;
-        let pod_duplex = std::sync::Arc::new(tokio::sync::Mutex::new(stream));
+        drop(probe);
 
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
@@ -407,6 +437,7 @@ impl PortForwardManager {
             std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_CONNECTIONS));
 
         let id = uuid::Uuid::new_v4().to_string();
+        let info_name = name.clone();
         let task = tokio::spawn(async move {
             loop {
                 let Ok((mut conn, _)) = listener.accept().await else {
@@ -420,11 +451,20 @@ impl PortForwardManager {
                         continue;
                     }
                 };
-                let pod_duplex = pod_duplex.clone();
+                // One port-forward stream per inbound connection: sharing a
+                // single pod duplex across clients interleaves their bytes.
+                let api = api.clone();
+                let name = name.clone();
                 tokio::spawn(async move {
-                    let mut pod_duplex = pod_duplex.lock().await;
-                    let _ = tokio::io::copy_bidirectional(&mut conn, &mut *pod_duplex).await;
-                    drop(permit);
+                    let _permit = permit;
+                    let mut pf = match api.portforward(&name, &[remote_port]).await {
+                        Ok(pf) => pf,
+                        Err(_) => return,
+                    };
+                    let Some(mut stream) = pf.take_stream(remote_port) else {
+                        return;
+                    };
+                    let _ = tokio::io::copy_bidirectional(&mut conn, &mut stream).await;
                 });
             }
         });
@@ -435,7 +475,8 @@ impl PortForwardManager {
             PortForwardInfo {
                 id: id.clone(),
                 context: ctx.context,
-                name,
+                namespace: ctx.namespace,
+                name: info_name,
                 remote_port,
                 local_port,
             },
@@ -548,7 +589,7 @@ mod tests {
                 "pod-a".into(),
                 None,
                 vec!["sh".into()],
-                futures::channel::mpsc::unbounded::<String>().1,
+                futures::channel::mpsc::channel::<String>(8).1,
                 move |event| {
                     let _ = tx.unbounded_send(event);
                 },

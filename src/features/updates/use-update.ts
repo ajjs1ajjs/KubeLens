@@ -17,8 +17,15 @@ export interface UseUpdateResult {
 
 const RELEASES_PAGE = "https://github.com/ajjs1ajjs/KubeLens/releases";
 
+const VERSION_RE = /^\d+\.\d+\.\d+([-.+0-9A-Za-z]+)?$/;
+
 function releaseUrlFor(version: string | null): string {
-  return version ? `${RELEASES_PAGE}/tag/v${version}` : RELEASES_PAGE;
+  // Version comes from the update server: validate before interpolating
+  // into a URL opened in the system browser.
+  if (version && VERSION_RE.test(version)) {
+    return `${RELEASES_PAGE}/tag/v${version}`;
+  }
+  return RELEASES_PAGE;
 }
 
 /**
@@ -89,7 +96,9 @@ export function useUpdate(): UseUpdateResult {
         if (event.event === "Started") {
           setProgress(0);
         } else if (event.event === "Progress") {
-          setProgress((prev) => (prev ?? 0) + Number(event.data.chunkLength));
+          // This plugin version reports chunk bytes without a total:
+          // stay indeterminate instead of fabricating a percentage.
+          setProgress(null);
         }
       });
       setProgress(100);
@@ -107,8 +116,12 @@ export function useUpdate(): UseUpdateResult {
       const { openUrl } = await import("@tauri-apps/plugin-opener");
       await openUrl(url);
     } catch {
-      const { writeText } = await import("@tauri-apps/plugin-clipboard-manager");
-      await writeText(url);
+      // Never overwrite the clipboard silently: surface the link instead.
+      const { toast } = await import("sonner");
+      toast.info(url, {
+        description: "Could not open the browser — copy the link manually.",
+        duration: 10000,
+      });
     }
   }, [version]);
 

@@ -45,19 +45,40 @@ impl RateLimiter {
         self.configs.insert(group.to_string(), config);
     }
 
-    /// Checks if a request is allowed for the given group and key.
-    /// Returns (allowed, retry_after).
-    pub fn check(&self, group: &str, key: &str) -> (bool, Option<Duration>) {
+    /// Checks if a request is allowed for the given group.
+    /// Returns (allowed, retry_after). One bucket per group: keys used to be
+    /// attacker-influenced (`config_id:context`), which both bypassed the
+    /// limit by rotation and grew the map forever.
+    pub fn check(&self, group: &str) -> (bool, Option<Duration>) {
+        {
+            let mut buckets = self.buckets.lock().unwrap();
+            // Evict buckets idle longer than their window (bounded memory).
+            let stale: Vec<String> = buckets
+                .iter()
+                .filter_map(|(k, b)| {
+                    let window = self
+                        .configs
+                        .get(group)
+                        .map(|c| c.window)
+                        .unwrap_or(self.default_config.window);
+                    (Instant::now().duration_since(b.last_refill) > window * 2).then(|| k.clone())
+                })
+                .collect();
+            for k in stale {
+                buckets.remove(&k);
+            }
+        }
         let config = self.configs.get(group).unwrap_or(&self.default_config);
         let mut buckets = self.buckets.lock().unwrap();
-        let bucket_key = format!("{group}:{key}");
 
-        let bucket = buckets.entry(bucket_key).or_insert_with(|| TokenBucket {
-            tokens: config.max_requests as f64,
-            last_refill: Instant::now(),
-            capacity: config.max_requests,
-            refill_rate: config.max_requests as f64 / config.window.as_secs_f64(),
-        });
+        let bucket = buckets
+            .entry(group.to_string())
+            .or_insert_with(|| TokenBucket {
+                tokens: config.max_requests as f64,
+                last_refill: Instant::now(),
+                capacity: config.max_requests,
+                refill_rate: config.max_requests as f64 / config.window.as_secs_f64(),
+            });
 
         let now = Instant::now();
         let elapsed = now.duration_since(bucket.last_refill).as_secs_f64();
@@ -117,6 +138,13 @@ pub fn init_rate_limiter() {
             window: Duration::from_secs(60),
         },
     );
+    limiter.set_config(
+        "read",
+        RateLimitConfig {
+            max_requests: 300,
+            window: Duration::from_secs(60),
+        },
+    );
 
     RATE_LIMITER.set(limiter).ok();
 }
@@ -160,13 +188,20 @@ pub fn rate_limiter() -> &'static RateLimiter {
                 window: Duration::from_secs(60),
             },
         );
+        limiter.set_config(
+            "read",
+            RateLimitConfig {
+                max_requests: 300,
+                window: Duration::from_secs(60),
+            },
+        );
         limiter
     })
 }
 
 /// Checks rate limit for a command group and returns an error if exceeded.
-pub fn check_rate_limit(group: &str, key: &str) -> Result<(), String> {
-    let (allowed, retry_after) = rate_limiter().check(group, key);
+pub fn check_rate_limit(group: &str) -> Result<(), String> {
+    let (allowed, retry_after) = rate_limiter().check(group);
     if allowed {
         Ok(())
     } else {

@@ -38,7 +38,7 @@ function ScaleForm({
 
   const submit = () => {
     const parsed = Number.parseInt(value, 10);
-    if (Number.isNaN(parsed) || parsed < 0) {
+    if (Number.isNaN(parsed) || parsed < 0 || parsed > 10000) {
       setInvalid(true);
       return;
     }
@@ -55,6 +55,7 @@ function ScaleForm({
           id="scale-replicas"
           type="number"
           min={0}
+          max={10000}
           value={value}
           onChange={(e) => {
             setValue(e.target.value);

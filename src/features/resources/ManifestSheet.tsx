@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCcw, Save, X, FileText, Code2 } from "lucide-react";
+import { load as yamlLoad } from "js-yaml";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -38,9 +39,27 @@ function EditableBody({
 }) {
   const { t } = useTranslation();
   const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState<string | null>(null);
 
   const submitKey =
     submitLabel === "Apply" ? "common.apply" : submitLabel === "Save" ? "common.save" : undefined;
+
+  const handleSubmit = () => {
+    // Client-side gate before the backend invoke: size + syntax.
+    // js-yaml v5 load() is safe by default (no custom schema/tags).
+    if (value.length > 1_000_000) {
+      setError(t("resources.yaml.tooLarge"));
+      return;
+    }
+    try {
+      yamlLoad(value);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    setError(null);
+    onSubmit?.(value);
+  };
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden">
@@ -64,10 +83,18 @@ function EditableBody({
       <div className="bg-background flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden rounded-md border shadow-sm">
         <YamlEditor
           value={value}
-          onChange={setValue}
+          onChange={(v) => {
+            setValue(v);
+            if (error) setError(null);
+          }}
           className="h-full w-full !border-0 !bg-transparent"
         />
       </div>
+      {error && (
+        <p role="alert" className="text-destructive shrink-0 text-xs">
+          {error}
+        </p>
+      )}
       <SheetFooter className="shrink-0 gap-2 border-t pt-3">
         <SheetClose asChild>
           <Button variant="outline">
@@ -75,7 +102,7 @@ function EditableBody({
             {t("common.cancel")}
           </Button>
         </SheetClose>
-        <Button onClick={() => onSubmit?.(value)} disabled={isSubmitting}>
+        <Button onClick={handleSubmit} disabled={isSubmitting}>
           <Save className="size-3.5" />
           {submitKey ? t(submitKey) : (submitLabel ?? t("common.apply"))}
         </Button>
